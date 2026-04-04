@@ -95,11 +95,54 @@
         .palette-row-top input[type="color"] { width: 34px; height: 24px; border: none; background: transparent; padding: 0; cursor: pointer; }
         .palette-brightness { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
         .palette-brightness span { font-size: 11px; color: #94a3b8; min-width: 38px; text-align: right; }
-        #view-instructions { position: fixed; left: 14px; bottom: 12px; z-index: 9; padding: 6px 8px; border-radius: 8px; background: rgba(8, 12, 22, 0.72); border: 1px solid rgba(71, 85, 105, 0.58); color: #94a3b8; font-size: 10px; line-height: 1.4; max-width: 360px; pointer-events: none; backdrop-filter: blur(2px); }
-        #view-instructions b { color: #e2e8f0; }
+        #sim-title { position: fixed; left: 14px; top: 12px; z-index: 9; max-width: min(520px, calc(100vw - 28px)); padding: 8px 10px 7px; border-radius: 10px; background: rgba(8, 12, 22, 0.72); border: 1px solid rgba(71, 85, 105, 0.58); color: #e2e8f0; backdrop-filter: blur(2px); }
+        #sim-title-title { font-size: 14px; line-height: 1.15; font-weight: 600; letter-spacing: 0.01em; }
+        #sim-title-sub { margin-top: 2px; font-size: 10px; line-height: 1.35; color: #94a3b8; }
+        #view-instructions { position: fixed; left: 14px; bottom: 12px; z-index: 9; padding: 7px 9px; border-radius: 8px; background: rgba(8, 12, 22, 0.72); border: 1px solid rgba(71, 85, 105, 0.58); color: #94a3b8; font-size: 10px; line-height: 1.45; max-width: 430px; backdrop-filter: blur(2px); }
+        #view-instructions b { color: #e2e8f0; font-weight: 600; }
         #feedback-link { position: fixed; right: 14px; bottom: 12px; z-index: 9; padding: 6px 10px; border-radius: 8px; background: rgba(8, 12, 22, 0.72); border: 1px solid rgba(71, 85, 105, 0.58); color: #cbd5e1; font-size: 11px; line-height: 1.25; text-decoration: none; backdrop-filter: blur(2px); }
         #feedback-link:hover { background: rgba(15, 23, 42, 0.9); color: #fff; border-color: rgba(96, 165, 250, 0.75); }
-        #feedback-link small { display: block; font-size: 10px; color: #94a3b8; }
+        #home-link { position: fixed; right: 14px; top: 12px; z-index: 9; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; border-radius: 999px; background: rgba(8, 12, 22, 0.72); border: 1px solid rgba(71, 85, 105, 0.58); color: #cbd5e1; font-size: 14px; line-height: 1; text-decoration: none; backdrop-filter: blur(2px); }
+        #home-link:hover { background: rgba(15, 23, 42, 0.9); color: #fff; border-color: rgba(96, 165, 250, 0.75); }
+        #intro-overlay { position: fixed; inset: 0; z-index: 25; background: radial-gradient(circle at 10% 18%, rgba(56, 189, 248, 0.18), transparent 24%), radial-gradient(circle at 86% 14%, rgba(251, 191, 36, 0.14), transparent 22%), radial-gradient(circle at 86% 82%, rgba(16, 185, 129, 0.12), transparent 24%), linear-gradient(180deg, rgba(2,6,23,0.97) 0%, rgba(2,6,23,0.985) 100%); display: flex; align-items: center; justify-content: center; padding: 16px; }
+        #intro-overlay.hidden { display: none; }
+        #intro-panel { width: min(1260px, 100%); height: min(840px, calc(100vh - 32px)); overflow: hidden; border-radius: 28px; border: 1px solid rgba(148, 163, 184, 0.16); background: linear-gradient(135deg, rgba(15,23,42,0.96), rgba(3,7,18,0.98)); box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+        #intro-layout { display: grid; grid-template-columns: minmax(320px, 0.92fr) minmax(520px, 1.08fr); height: 100%; }
+        #intro-copy { position: relative; padding: 30px 32px 24px; border-right: 1px solid rgba(148, 163, 184, 0.12); overflow: hidden; }
+        #intro-copy::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 26% 26%, rgba(14,165,233,0.14), transparent 22%), radial-gradient(circle at 72% 62%, rgba(251,191,36,0.10), transparent 26%), radial-gradient(circle at 42% 82%, rgba(16,185,129,0.10), transparent 20%); pointer-events: none; }
+        #intro-actions { position: relative; padding: 26px 28px 24px; background: linear-gradient(180deg, rgba(255,255,255,0.015), rgba(255,255,255,0)); }
+        #intro-kicker { position: relative; display: inline-flex; align-items: center; gap: 8px; padding: 7px 12px; border-radius: 999px; border: 1px solid rgba(34, 211, 238, 0.26); background: rgba(34, 211, 238, 0.08); color: #cffafe; font-size: 11px; text-transform: uppercase; letter-spacing: 0.18em; }
+        #intro-title { position: relative; margin: 18px 0 0; font-size: clamp(34px, 4.3vw, 60px); line-height: 0.94; letter-spacing: -0.045em; color: #f8fafc; max-width: 10ch; }
+        #intro-subtitle { position: relative; margin: 16px 0 0; max-width: 34rem; font-size: clamp(16px, 1.55vw, 23px); line-height: 1.4; color: #dbeafe; }
+        #intro-support { position: relative; margin-top: 18px; padding: 13px 15px; border-radius: 18px; border: 1px solid rgba(148, 163, 184, 0.14); background: rgba(15, 23, 42, 0.5); color: #cbd5e1; font-size: 13px; line-height: 1.55; max-width: 33rem; }
+        #intro-copy-art { position: relative; margin-top: 22px; height: 240px; border-radius: 24px; border: 1px solid rgba(148, 163, 184, 0.12); background: linear-gradient(180deg, rgba(2,6,23,0.2), rgba(15,23,42,0.42)); overflow: hidden; }
+        #intro-copy-art::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 23% 58%, rgba(16,185,129,0.9) 0 18px, transparent 19px), radial-gradient(circle at 72% 35%, rgba(226,232,240,0.92) 0 11px, transparent 12px), radial-gradient(circle at 54% 48%, rgba(251,191,36,0.95) 0 4px, transparent 5px), radial-gradient(circle at 69% 63%, rgba(250,204,21,0.75) 0 3px, transparent 4px); }
+        #intro-copy-art::after { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at 23% 58%, transparent 0 80px, rgba(96,165,250,0.28) 81px 82px, transparent 83px), radial-gradient(circle at 23% 58%, transparent 0 127px, rgba(251,191,36,0.22) 128px 129px, transparent 130px), radial-gradient(circle at 72% 35%, transparent 0 52px, rgba(203,213,225,0.18) 53px 54px, transparent 55px), linear-gradient(150deg, transparent 0 55%, rgba(251,191,36,0.17) 56% 57%, transparent 58%); opacity: 0.95; }
+        #intro-buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+        .intro-card { border-radius: 20px; border: 1px solid rgba(148, 163, 184, 0.16); background: linear-gradient(135deg, rgba(15,23,42,0.78), rgba(15,23,42,0.48)); padding: 14px 14px 13px; min-height: 0; }
+        .intro-card:nth-child(1) { background-image: linear-gradient(135deg, rgba(6,95,70,0.28), rgba(15,23,42,0.50)); box-shadow: inset 0 0 0 1px rgba(16,185,129,0.10); }
+        .intro-card:nth-child(2) { background-image: linear-gradient(135deg, rgba(30,64,175,0.25), rgba(15,23,42,0.50)); box-shadow: inset 0 0 0 1px rgba(96,165,250,0.12); }
+        .intro-card:nth-child(3) { background-image: linear-gradient(135deg, rgba(91,33,182,0.25), rgba(15,23,42,0.50)); box-shadow: inset 0 0 0 1px rgba(167,139,250,0.12); }
+        .intro-card:nth-child(4) { background-image: linear-gradient(135deg, rgba(161,98,7,0.24), rgba(15,23,42,0.50)); box-shadow: inset 0 0 0 1px rgba(251,191,36,0.12); }
+        .intro-tag { font-size: 10px; text-transform: uppercase; letter-spacing: 0.16em; color: #cbd5e1; opacity: 0.9; }
+        .intro-card h3 { margin: 7px 0 0; font-size: 18px; line-height: 1.15; color: #f8fafc; }
+        .intro-card p { margin: 10px 0 0; font-size: 12.5px; line-height: 1.5; color: #dbe4f0; }
+        .intro-open { margin-top: 12px; padding: 10px 12px; border-radius: 13px; border: 1px solid rgba(255,255,255,0.08); background: #f8fafc; color: #020617; font-size: 12px; font-weight: 700; cursor: pointer; }
+        .intro-open:hover { background: #ffffff; }
+        #intro-close { position: relative; margin-top: 12px; background: transparent; border: 1px solid rgba(148, 163, 184, 0.2); color: #94a3b8; padding: 9px 13px; border-radius: 14px; font-size: 12px; cursor: pointer; }
+        #intro-close:hover { color: #fff; border-color: rgba(96,165,250,0.5); background: rgba(15,23,42,0.55); }
+        @media (max-width: 1080px) {
+            #intro-panel { height: auto; max-height: calc(100vh - 24px); overflow: auto; }
+            #intro-layout { grid-template-columns: 1fr; height: auto; }
+            #intro-copy { border-right: none; border-bottom: 1px solid rgba(148, 163, 184, 0.12); }
+            #intro-copy-art { height: 170px; }
+        }
+        @media (max-width: 720px) {
+            #intro-overlay { padding: 8px; }
+            #intro-buttons { grid-template-columns: 1fr; }
+            #intro-copy, #intro-actions { padding: 20px 18px; }
+            #intro-title { max-width: none; }
+        }
 
         #event-toast { display: none; position: absolute; top: 30px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.95); border: 2px solid #3b82f6; padding: 20px 30px; border-radius: 8px; z-index: 100; color: #fff; font-size: 16px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.5s; line-height: 1.4; }
         #event-toast b { font-size: 18px; }
@@ -123,8 +166,52 @@
     Distance to central mass approached zero with collisions disabled. Simulated acceleration spiked toward infinity, resulting in an artificial slingshot.
 </div>
 
-<div id="view-instructions"><b>View</b> Mouse or trackpad drag = rotate · Ctrl+drag = pan · wheel, scroll or pinch = zoom · arrows = rotate · Ctrl+arrows = pan · Shift+↑/↓ = zoom.</div>
-<a id="feedback-link" href="https://docs.google.com/forms/d/e/1FAIpQLSeOJN6TWzFv8Lli8lkw6WNXawqsPWsMmHApplRWAyh-mPFe4Q/viewform" target="_blank" rel="noopener noreferrer">Feedback<small>opens form</small></a>
+<div id="intro-overlay">
+    <div id="intro-panel">
+        <div id="intro-layout">
+            <div id="intro-copy">
+                <div id="intro-kicker">Start here</div>
+                <h1 id="intro-title">Spacecraft Paths in Gravity</h1>
+                <p id="intro-subtitle">Understand gravitational potential wells, orbital energy, escape speed, and lunar transfer paths by seeing motion drawn directly into the shape of the gravity field.</p>
+                <div id="intro-support">Built around the Earth–Moon system, but the same ideas can be explored for other pairs of bodies by changing the model parameters.</div>
+                <div id="intro-copy-art" aria-hidden="true"></div>
+                <button id="intro-close" type="button">Skip intro</button>
+            </div>
+            <div id="intro-actions">
+                <div id="intro-buttons">
+                    <div class="intro-card">
+                        <div class="intro-tag">Best first stop</div>
+                        <h3>Static system — Earth only</h3>
+                        <p>Get a feel for orbits and how they match the shape of the potential well. A potential well is a way of visualising how gravity gets weaker as you move away from a planet. The effect is rather like what you would get rolling a ball around one of those charity coin vortices. Try adding energy (prograde burn) nearest Earth (at perigee), adding energy at the furthest point (at apogee), or firing the engines opposite to the direction of motion (retrograde burn). Put in enough energy and you will also get a feel for escape speed.</p>
+                        <button class="intro-open" type="button" data-intro-mode="static-earth">Open Earth-only static view</button>
+                    </div>
+                    <div class="intro-card">
+                        <div class="intro-tag">Transfers and capture</div>
+                        <h3>Static system — Earth + Moon</h3>
+                        <p>See how one might travel to the Moon and what it means to move from one gravitational well to another. You’ll see that unless you slow down at the Moon, you must come back, crash, or escape the Earth–Moon system altogether — and if you look at the wells, that should make sense. The model default is just a convenient set of ratios to demonstrate the ideas. Under Earth–Moon model tuning, you can put in the real values for the Earth–Moon system, or change the mass ratio, radius ratio, and separation distance to explore other pairs of bodies.</p>
+                        <button class="intro-open" type="button" data-intro-mode="static-moon">Open Earth–Moon static view</button>
+                    </div>
+                    <div class="intro-card">
+                        <div class="intro-tag">Timing matters</div>
+                        <h3>Dynamic system</h3>
+                        <p>With the orbiting secondary body in motion, you can see why timing matters. The moving body can redirect a spacecraft and change its path and energy, which helps build intuition for flybys, phasing, and gravitational slingshots.</p>
+                        <button class="intro-open" type="button" data-intro-mode="dynamic">Open dynamic view</button>
+                    </div>
+                    <div class="intro-card">
+                        <div class="intro-tag">Routes and burns</div>
+                        <h3>Historical lunar missions</h3>
+                        <p>See the different burns and routes that previous missions have used. This is not an attempt at perfect mission recreation; it is a guided visual explanation of the manoeuvres, transfer families, and possibilities.</p>
+                        <button class="intro-open" type="button" data-intro-mode="missions">Open historical missions</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<a id="home-link" href="#" title="Back to start screen" aria-label="Back to start screen">⌂</a>
+<div id="sim-title"><div id="sim-title-title">Spacecraft Paths in Gravity</div><div id="sim-title-sub">Earth–Moon example system. Change the model parameters to explore other pairs of bodies.</div></div>
+<div id="view-instructions"><b>View and controls</b> Tilt between <i>plan view</i> and <i>side view</i> to see both the usual orbit picture and the potential wells. Drag up/down or use ↑/↓ to tilt · drag left/right or ←/→ to yaw · Ctrl+drag or Ctrl+arrows = pan · wheel, scroll or pinch = zoom · Shift+↑/↓ = zoom.</div>
+<a id="feedback-link" href="https://docs.google.com/forms/d/e/1FAIpQLSeOJN6TWzFv8Lli8lkw6WNXawqsPWsMmHApplRWAyh-mPFe4Q/viewform" target="_blank" rel="noopener noreferrer">Feedback</a>
 
 <div id="ui-container">
     
@@ -354,51 +441,51 @@
     }
 
     function buildFeedbackContextText() {
-    const statusBox = document.getElementById('status-box');
-    const radialContainer = document.getElementById('radial-container');
-    const massRatioSlider = document.getElementById('mass-ratio-slider');
-    const distanceRatioSlider = document.getElementById('distance-ratio-slider');
-    const radiusRatioSlider = document.getElementById('radius-ratio-slider');
+        const statusBox = document.getElementById('status-box');
+        const radialContainer = document.getElementById('radial-container');
+        const massRatioSlider = document.getElementById('mass-ratio-slider');
+        const distanceRatioSlider = document.getElementById('distance-ratio-slider');
+        const radiusRatioSlider = document.getElementById('radius-ratio-slider');
 
-    const missionStepCount = (scriptedMission && scriptedMission.steps) ? scriptedMission.steps.length : 0;
-    const missionStepIndexRaw = (scriptedMission && typeof scriptedMission.segmentIndex === 'number')
-        ? scriptedMission.segmentIndex
-        : -1;
-    const missionStepIndex = missionStepCount
-        ? Math.min(Math.max(missionStepIndexRaw, 0), missionStepCount - 1) + 1
-        : 0;
+        const missionStepCount = (scriptedMission && scriptedMission.steps) ? scriptedMission.steps.length : 0;
+        const missionStepIndexRaw = (scriptedMission && typeof scriptedMission.segmentIndex === 'number')
+            ? scriptedMission.segmentIndex
+            : -1;
+        const missionStepIndex = missionStepCount
+            ? Math.min(Math.max(missionStepIndexRaw, 0), missionStepCount - 1) + 1
+            : 0;
 
-    const radialShown = radialContainer && getComputedStyle(radialContainer).display !== 'none';
+        const radialShown = radialContainer && getComputedStyle(radialContainer).display !== 'none';
 
-    const parts = [
-        `Version: v36`,
-        `Time: ${new Date().toISOString()}`,
-        `Tab: ${getCurrentTabLabel()}`,
-        `Status: ${statusBox ? statusBox.innerText.trim() : 'Unknown'}`,
-        `Mission: ${getSelectedMissionTitle()}`,
-        `Mission id: ${selectedMissionId || 'None'}`,
-        `Mission step: ${getSelectedMissionStepTitle()}`,
-        `Mission step index: ${missionStepIndex}${missionStepCount ? `/${missionStepCount}` : ''}`,
-        `Mission active: ${scriptedMission ? (!!scriptedMission.active) : false}`,
-        `Mission complete: ${scriptedMission ? (!!scriptedMission.complete) : false}`,
-        `System: ${hasMoon ? 'Earth–Moon' : 'Earth only'}`,
-        `Animation / sim speed: ${simSpeed.toFixed(1)}x`,
-        `Delta-V slider: ${deltaV.toFixed(1)}`,
-        `Scheduled burn: ${scheduledBoost || 'none'}`,
-        `Radial controls shown: ${radialShown ? 'yes' : 'no'}`,
-        `Collisions: ${collisionsEnabled ? 'ON' : 'OFF'}`,
-        `Low-Earth lunar suppression: ${leoMoonSuppression ? 'ON' : 'OFF'}`,
-        `Moon mass ratio slider: ${massRatioSlider ? massRatioSlider.value : 'n/a'}`,
-        `Earth–Moon distance slider: ${distanceRatioSlider ? distanceRatioSlider.value : 'n/a'} Earth radii`,
-        `Moon radius ratio slider: ${radiusRatioSlider ? radiusRatioSlider.value : 'n/a'}`,
-        `Spacecraft position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`,
-        `Velocity: (${vel.x.toFixed(2)}, ${vel.y.toFixed(2)})`,
-        `In Moon SOI: ${inMoonSOI ? 'yes' : 'no'}`,
-        `Page: ${window.location.href}`
-    ];
+        const parts = [
+            `Version: v40`,
+            `Time: ${new Date().toISOString()}`,
+            `Tab: ${getCurrentTabLabel()}`,
+            `Status: ${statusBox ? statusBox.innerText.trim() : 'Unknown'}`,
+            `Mission: ${getSelectedMissionTitle()}`,
+            `Mission id: ${selectedMissionId || 'None'}`,
+            `Mission step: ${getSelectedMissionStepTitle()}`,
+            `Mission step index: ${missionStepIndex}${missionStepCount ? `/${missionStepCount}` : ''}`,
+            `Mission active: ${scriptedMission ? (!!scriptedMission.active) : false}`,
+            `Mission complete: ${scriptedMission ? (!!scriptedMission.complete) : false}`,
+            `System: ${hasMoon ? 'Earth–Moon' : 'Earth only'}`,
+            `Animation / sim speed: ${simSpeed.toFixed(1)}x`,
+            `Delta-V slider: ${deltaV.toFixed(1)}`,
+            `Scheduled burn: ${scheduledBoost || 'none'}`,
+            `Radial controls shown: ${radialShown ? 'yes' : 'no'}`,
+            `Collisions: ${collisionsEnabled ? 'ON' : 'OFF'}`,
+            `Low-Earth lunar suppression: ${leoMoonSuppression ? 'ON' : 'OFF'}`,
+            `Moon mass ratio slider: ${massRatioSlider ? massRatioSlider.value : 'n/a'}`,
+            `Earth–Moon distance slider: ${distanceRatioSlider ? distanceRatioSlider.value : 'n/a'} Earth radii`,
+            `Moon radius ratio slider: ${radiusRatioSlider ? radiusRatioSlider.value : 'n/a'}`,
+            `Spacecraft position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`,
+            `Velocity: (${vel.x.toFixed(2)}, ${vel.y.toFixed(2)})`,
+            `In Moon SOI: ${inMoonSOI ? 'yes' : 'no'}`,
+            `Page: ${window.location.href}`
+        ];
 
-    return parts.join('\n');
-}
+        return parts.join('\n');
+    }
 
     function buildFeedbackUrl() {
         const context = buildFeedbackContextText();
@@ -423,11 +510,44 @@
     function positionOverlayUi() {
         const sidebar = document.getElementById('ui-container');
         const hint = document.getElementById('view-instructions');
-        if (!sidebar || !hint) return;
+        const title = document.getElementById('sim-title');
+        if (!sidebar) return;
         const rect = sidebar.getBoundingClientRect();
         const desiredLeft = rect.right + 14;
-        const maxLeft = Math.max(14, window.innerWidth - hint.offsetWidth - 14);
-        hint.style.left = `${Math.max(14, Math.min(desiredLeft, maxLeft))}px`;
+        if (title) {
+            const titleMaxLeft = Math.max(14, window.innerWidth - title.offsetWidth - 14);
+            title.style.left = `${Math.max(14, Math.min(desiredLeft, titleMaxLeft))}px`;
+        }
+        if (hint) {
+            const hintMaxLeft = Math.max(14, window.innerWidth - hint.offsetWidth - 14);
+            hint.style.left = `${Math.max(14, Math.min(desiredLeft, hintMaxLeft))}px`;
+        }
+    }
+
+    function hideIntroOverlay() {
+        const overlay = document.getElementById('intro-overlay');
+        if (overlay) overlay.classList.add('hidden');
+    }
+
+    function showIntroOverlay() {
+        const overlay = document.getElementById('intro-overlay');
+        if (overlay) overlay.classList.remove('hidden');
+    }
+
+    function openIntroMode(mode) {
+        if (mode === 'static-earth') {
+            document.getElementById('tab-static').click();
+            if (hasMoon) document.getElementById('toggle-moon').click();
+        } else if (mode === 'static-moon') {
+            document.getElementById('tab-static').click();
+            if (!hasMoon) document.getElementById('toggle-moon').click();
+        } else if (mode === 'dynamic') {
+            document.getElementById('tab-dynamic').click();
+        } else if (mode === 'missions') {
+            document.getElementById('tab-missions').click();
+        }
+        hideIntroOverlay();
+        positionOverlayUi();
     }
 
     // --- Physics Constants & State ---
@@ -2216,6 +2336,15 @@
                 .then(() => showToast('<b>Feedback context copied.</b><br>Paste it into the first form field if the form is not yet wired for automatic pre-fill.', 5200, '#60a5fa'))
                 .catch(() => {});
         }
+    });
+
+    document.getElementById('home-link').addEventListener('click', (e) => {
+        e.preventDefault();
+        showIntroOverlay();
+    });
+    document.getElementById('intro-close').addEventListener('click', hideIntroOverlay);
+    document.querySelectorAll('[data-intro-mode]').forEach(btn => {
+        btn.addEventListener('click', () => openIntroMode(btn.dataset.introMode));
     });
 
     renderMissionButtons();
