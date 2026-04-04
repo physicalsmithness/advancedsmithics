@@ -354,26 +354,51 @@
     }
 
     function buildFeedbackContextText() {
-        const parts = [
-            `Time: ${new Date().toISOString()}`,
-            `Tab: ${getCurrentTabLabel()}`,
-            `Mission: ${getSelectedMissionTitle()}`,
-            `Mission step: ${getSelectedMissionStepTitle()}`,
-            `Mission active: ${scriptedMission ? (!!scriptedMission.active) : false}`,
-            `Mission complete: ${scriptedMission ? (!!scriptedMission.complete) : false}`,
-            `System: ${hasMoon ? 'Earth–Moon' : 'Earth only'}`,
-            `Animation / sim speed: ${simSpeed.toFixed(1)}x`,
-            `Delta-V slider: ${deltaV.toFixed(1)}`,
-            `Scheduled burn: ${scheduledBoost || 'none'}`,
-            `Collisions: ${collisionsEnabled ? 'ON' : 'OFF'}`,
-            `Low-Earth lunar suppression: ${leoMoonSuppression ? 'ON' : 'OFF'}`,
-            `Earth position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`,
-            `Velocity: (${vel.x.toFixed(2)}, ${vel.y.toFixed(2)})`,
-            `In Moon SOI: ${inMoonSOI ? 'yes' : 'no'}`,
-            `Page: ${window.location.href}`
-        ];
-        return parts.join('\n');
-    }
+    const statusBox = document.getElementById('status-box');
+    const radialContainer = document.getElementById('radial-container');
+    const massRatioSlider = document.getElementById('mass-ratio-slider');
+    const distanceRatioSlider = document.getElementById('distance-ratio-slider');
+    const radiusRatioSlider = document.getElementById('radius-ratio-slider');
+
+    const missionStepCount = (scriptedMission && scriptedMission.steps) ? scriptedMission.steps.length : 0;
+    const missionStepIndexRaw = (scriptedMission && typeof scriptedMission.segmentIndex === 'number')
+        ? scriptedMission.segmentIndex
+        : -1;
+    const missionStepIndex = missionStepCount
+        ? Math.min(Math.max(missionStepIndexRaw, 0), missionStepCount - 1) + 1
+        : 0;
+
+    const radialShown = radialContainer && getComputedStyle(radialContainer).display !== 'none';
+
+    const parts = [
+        `Version: v36`,
+        `Time: ${new Date().toISOString()}`,
+        `Tab: ${getCurrentTabLabel()}`,
+        `Status: ${statusBox ? statusBox.innerText.trim() : 'Unknown'}`,
+        `Mission: ${getSelectedMissionTitle()}`,
+        `Mission id: ${selectedMissionId || 'None'}`,
+        `Mission step: ${getSelectedMissionStepTitle()}`,
+        `Mission step index: ${missionStepIndex}${missionStepCount ? `/${missionStepCount}` : ''}`,
+        `Mission active: ${scriptedMission ? (!!scriptedMission.active) : false}`,
+        `Mission complete: ${scriptedMission ? (!!scriptedMission.complete) : false}`,
+        `System: ${hasMoon ? 'Earth–Moon' : 'Earth only'}`,
+        `Animation / sim speed: ${simSpeed.toFixed(1)}x`,
+        `Delta-V slider: ${deltaV.toFixed(1)}`,
+        `Scheduled burn: ${scheduledBoost || 'none'}`,
+        `Radial controls shown: ${radialShown ? 'yes' : 'no'}`,
+        `Collisions: ${collisionsEnabled ? 'ON' : 'OFF'}`,
+        `Low-Earth lunar suppression: ${leoMoonSuppression ? 'ON' : 'OFF'}`,
+        `Moon mass ratio slider: ${massRatioSlider ? massRatioSlider.value : 'n/a'}`,
+        `Earth–Moon distance slider: ${distanceRatioSlider ? distanceRatioSlider.value : 'n/a'} Earth radii`,
+        `Moon radius ratio slider: ${radiusRatioSlider ? radiusRatioSlider.value : 'n/a'}`,
+        `Spacecraft position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`,
+        `Velocity: (${vel.x.toFixed(2)}, ${vel.y.toFixed(2)})`,
+        `In Moon SOI: ${inMoonSOI ? 'yes' : 'no'}`,
+        `Page: ${window.location.href}`
+    ];
+
+    return parts.join('\n');
+}
 
     function buildFeedbackUrl() {
         const context = buildFeedbackContextText();
