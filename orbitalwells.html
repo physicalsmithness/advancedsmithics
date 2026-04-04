@@ -487,7 +487,7 @@
         const radialShown = radialContainer && getComputedStyle(radialContainer).display !== 'none';
 
         const parts = [
-            `Version: v41`,
+            `Version: v42`,
             `Time: ${new Date().toISOString()}`,
             `Tab: ${getCurrentTabLabel()}`,
             `Status: ${statusBox ? statusBox.innerText.trim() : 'Unknown'}`,
@@ -534,6 +534,29 @@
         link.title = FEEDBACK_PREFILL_TEMPLATE_URL.trim()
             ? 'Open feedback form with current simulator context pre-filled.'
             : 'Open feedback form. Current simulator context will also be copied to the clipboard.';
+    }
+
+    function trackAnalyticsEvent(eventName, params = {}) {
+        if (typeof gtag !== 'function') return;
+        try {
+            gtag('event', eventName, {
+                simulator_version: 'v42',
+                current_tab: getCurrentTabLabel(),
+                selected_mission_id: selectedMissionId || 'none',
+                selected_mission_title: getSelectedMissionTitle(),
+                current_step: getSelectedMissionStepTitle(),
+                ...params
+            });
+        } catch (err) {
+            // Ignore analytics failures so they never affect the simulator UI.
+        }
+    }
+
+    let hasTrackedViewportInteraction = false;
+    function trackViewportInteraction(kind) {
+        if (hasTrackedViewportInteraction) return;
+        hasTrackedViewportInteraction = true;
+        trackAnalyticsEvent('simulator_view_interaction', { interaction_kind: kind });
     }
 
     function isPhoneLayout() {
@@ -598,6 +621,7 @@
     }
 
     function openIntroMode(mode) {
+        trackAnalyticsEvent('simulator_mode_open', { mode });
         if (mode === 'static-earth') {
             document.getElementById('tab-static').click();
             if (hasMoon) document.getElementById('toggle-moon').click();
@@ -695,6 +719,8 @@
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
+    renderer.domElement.addEventListener('pointerdown', () => trackViewportInteraction('pointer'));
+    renderer.domElement.addEventListener('wheel', () => trackViewportInteraction('wheel'), { passive: true });
 
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -744,6 +770,7 @@
     window.addEventListener('keydown', (e) => {
         const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
         if (!arrowKeys.includes(e.key)) return;
+        trackViewportInteraction('keyboard');
         e.preventDefault();
         if (document.activeElement) document.activeElement.blur();
         const rotateStep = 0.065;
@@ -1807,6 +1834,10 @@
         setSpeed(1.0);
         updateMissionPanels();
         updateFeedbackLink();
+        trackAnalyticsEvent('historical_mission_select', {
+            mission_id: missionId,
+            mission_title: missionCatalog[missionId] ? missionCatalog[missionId].title : missionId
+        });
     }
     function startCurrentMissionStepFromState() {
         if (!selectedMissionId) return;
@@ -1818,9 +1849,16 @@
         scriptedMission.segmentTime = 0;
         scriptedMission.prevPoint = null;
         updateMissionPanels();
+        const step = scriptedMission.steps[scriptedMission.segmentIndex];
+        trackAnalyticsEvent('historical_mission_step_start', {
+            mission_id: selectedMissionId,
+            step_index: scriptedMission.segmentIndex + 1,
+            step_title: step && step.title ? step.title : 'Unknown'
+        });
     }
     function replaySelectedMission() {
         if (!selectedMissionId) return;
+        trackAnalyticsEvent('historical_mission_replay', { mission_id: selectedMissionId });
         instantiateMission(missionCatalog[selectedMissionId]);
         startCurrentMissionStepFromState();
     }
@@ -1832,6 +1870,7 @@
     }
     function resetSelectedMission() {
         if (!selectedMissionId) return;
+        trackAnalyticsEvent('historical_mission_reset', { mission_id: selectedMissionId });
         primeMissionSystem(missionCatalog[selectedMissionId]);
         clearScriptedMission();
         parkMissionSpacecraft();
@@ -2261,6 +2300,7 @@
 
     // --- UI Listeners ---
     document.getElementById('tab-static').addEventListener('click', (e) => {
+        trackAnalyticsEvent('simulator_tab_select', { tab_name: 'static' });
         isDynamicSystem = false; isMissionMode = false; clearScriptedMission();
         e.target.className = 'tab-btn active'; document.getElementById('tab-dynamic').className = 'tab-btn'; document.getElementById('tab-missions').className = 'tab-btn';
         document.getElementById('manual-controls').style.display = 'block'; document.getElementById('mission-controls').style.display = 'none'; document.getElementById('edu-panel-container').style.display = 'block';
@@ -2275,6 +2315,7 @@
     });
 
     document.getElementById('tab-dynamic').addEventListener('click', (e) => {
+        trackAnalyticsEvent('simulator_tab_select', { tab_name: 'dynamic' });
         isDynamicSystem = true; isMissionMode = false; clearScriptedMission();
         e.target.className = 'tab-btn active'; document.getElementById('tab-static').className = 'tab-btn'; document.getElementById('tab-missions').className = 'tab-btn';
         document.getElementById('manual-controls').style.display = 'block'; document.getElementById('mission-controls').style.display = 'none'; document.getElementById('edu-panel-container').style.display = 'block';
@@ -2289,6 +2330,7 @@
     });
 
     document.getElementById('tab-missions').addEventListener('click', (e) => {
+        trackAnalyticsEvent('simulator_tab_select', { tab_name: 'missions' });
         isDynamicSystem = true; isMissionMode = true; clearScriptedMission();
         e.target.className = 'tab-btn active'; document.getElementById('tab-static').className = 'tab-btn'; document.getElementById('tab-dynamic').className = 'tab-btn';
         document.getElementById('manual-controls').style.display = 'none'; document.getElementById('mission-controls').style.display = 'block'; document.getElementById('edu-panel-container').style.display = 'none';
@@ -2306,6 +2348,7 @@
 
     document.getElementById('toggle-moon').addEventListener('click', (e) => {
         hasMoon = !hasMoon; e.target.innerText = hasMoon ? 'System view: Earth–Moon' : 'System view: Earth only';
+        trackAnalyticsEvent('manual_system_toggle', { system_name: hasMoon ? 'earth_moon' : 'earth_only' });
         e.target.style.background = hasMoon ? '#047857' : '#3730a3'; moon.visible = hasMoon; updateSurfaces();
         updateEduPanel();
         if(hasMoon) showToast("<b>Earth-Moon System Engaged!</b><br>See if you can achieve a <i>Lunar Transfer Orbit (LTO)</i>. Try scheduling a massive Prograde burn at Earth Perigee for Trans-lunar injection (TLI).", 8000, '#8b5cf6');
@@ -2314,6 +2357,7 @@
 
     document.getElementById('toggle-crashes').addEventListener('click', (e) => {
         collisionsEnabled = !collisionsEnabled; e.target.innerText = collisionsEnabled ? 'Collisions: ON' : 'Collisions: OFF';
+        trackAnalyticsEvent('collisions_toggle', { enabled: collisionsEnabled });
         e.target.style.background = collisionsEnabled ? '#047857' : '#9ca3af'; updateSurfaces();
         updateFeedbackLink();
     });
@@ -2322,6 +2366,7 @@
         let container = document.getElementById('radial-container');
         if (container.style.display === 'none') { container.style.display = 'block'; e.target.innerText = '- Hide Radial Burns'; } 
         else { container.style.display = 'none'; e.target.innerText = '+ Advanced: Show Radial Burns'; }
+        trackAnalyticsEvent('radial_controls_toggle', { shown: container.style.display !== 'none' });
     });
 
     document.getElementById('speed-slider').addEventListener('input', (e) => setSpeed(parseFloat(e.target.value)));
@@ -2334,16 +2379,19 @@
         });
     });
     document.getElementById('btn-real-mass').addEventListener('click', () => {
+        trackAnalyticsEvent('model_set_real_value', { parameter_name: 'mass_ratio' });
         document.getElementById('mass-ratio-slider').value = REAL_MOON_MASS_RATIO;
         updateManualModelLabels();
         if (!isMissionMode) applyManualModelFromUI();
     });
     document.getElementById('btn-real-distance').addEventListener('click', () => {
+        trackAnalyticsEvent('model_set_real_value', { parameter_name: 'distance_ratio' });
         document.getElementById('distance-ratio-slider').value = REAL_MOON_DISTANCE_RE;
         updateManualModelLabels();
         if (!isMissionMode) applyManualModelFromUI();
     });
     document.getElementById('btn-real-radius').addEventListener('click', () => {
+        trackAnalyticsEvent('model_set_real_value', { parameter_name: 'radius_ratio' });
         document.getElementById('radius-ratio-slider').value = REAL_MOON_RADIUS_RATIO;
         updateManualModelLabels();
         if (!isMissionMode) applyManualModelFromUI();
@@ -2382,10 +2430,27 @@
         updateFeedbackLink();
     });
     
-    document.getElementById('btn-reset').addEventListener('click', resetOrbit);
-    document.getElementById('btn-perigee').addEventListener('click', () => { scheduledBoost = scheduledBoost === 'perigee' ? null : 'perigee'; updateUIState(); updateFeedbackLink(); });
-    document.getElementById('btn-apogee').addEventListener('click', () => { scheduledBoost = scheduledBoost === 'apogee' ? null : 'apogee'; updateUIState(); updateFeedbackLink(); });
-    document.getElementById('btn-radial').addEventListener('click', () => { applyBoost('radial'); updateFeedbackLink(); });
+    document.getElementById('btn-reset').addEventListener('click', () => {
+        trackAnalyticsEvent('manual_orbit_reset');
+        resetOrbit();
+    });
+    document.getElementById('btn-perigee').addEventListener('click', () => {
+        scheduledBoost = scheduledBoost === 'perigee' ? null : 'perigee';
+        trackAnalyticsEvent('manual_burn_schedule', { burn_location: 'perigee', active: scheduledBoost === 'perigee', delta_v: deltaV });
+        updateUIState();
+        updateFeedbackLink();
+    });
+    document.getElementById('btn-apogee').addEventListener('click', () => {
+        scheduledBoost = scheduledBoost === 'apogee' ? null : 'apogee';
+        trackAnalyticsEvent('manual_burn_schedule', { burn_location: 'apogee', active: scheduledBoost === 'apogee', delta_v: deltaV });
+        updateUIState();
+        updateFeedbackLink();
+    });
+    document.getElementById('btn-radial').addEventListener('click', () => {
+        trackAnalyticsEvent('manual_radial_burn', { delta_v: deltaV, in_moon_soi: inMoonSOI });
+        applyBoost('radial');
+        updateFeedbackLink();
+    });
 
     function updateUIState() {
         document.getElementById('btn-perigee').className = scheduledBoost === 'perigee' ? 'active' : '';
@@ -2394,6 +2459,7 @@
     window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); updateMobileLayout(); updateFeedbackLink(); });
 
     document.getElementById('feedback-link').addEventListener('click', () => {
+        trackAnalyticsEvent('feedback_open');
         updateFeedbackLink();
         if (!FEEDBACK_PREFILL_TEMPLATE_URL.trim() && navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(buildFeedbackContextText())
@@ -2404,11 +2470,12 @@
 
     document.getElementById('home-link').addEventListener('click', (e) => {
         e.preventDefault();
+        trackAnalyticsEvent('intro_open');
         showIntroOverlay();
         closeMobileSidebar();
     });
-    document.getElementById('intro-close').addEventListener('click', hideIntroOverlay);
-    document.getElementById('mobile-controls-toggle').addEventListener('click', toggleMobileSidebar);
+    document.getElementById('intro-close').addEventListener('click', () => { trackAnalyticsEvent('intro_close'); hideIntroOverlay(); });
+    document.getElementById('mobile-controls-toggle').addEventListener('click', () => { trackAnalyticsEvent('mobile_controls_toggle'); toggleMobileSidebar(); });
     document.getElementById('mobile-panel-close').addEventListener('click', closeMobileSidebar);
     document.getElementById('mobile-sidebar-backdrop').addEventListener('click', closeMobileSidebar);
     document.querySelectorAll('[data-intro-mode]').forEach(btn => {
