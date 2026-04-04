@@ -1,0 +1,2210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Orbital Potential Well Simulator</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050505; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #e0e0e0; }
+        #ui-container { position: absolute; top: 10px; left: 10px; background: rgba(15, 15, 18, 0.9); padding: 15px 20px; border-radius: 12px; border: 1px solid #333; width: 380px; box-shadow: 0 8px 16px rgba(0,0,0,0.8); max-height: 95vh; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; z-index: 10; }
+        
+        /* Tabs */
+        .tabs { display: flex; border-bottom: 2px solid #333; margin-bottom: -5px; }
+        .tab-btn { flex: 1; background: transparent; color: #94a3b8; border: none; padding: 10px 5px; font-size: 13px; font-weight: bold; cursor: pointer; transition: all 0.2s; border-bottom: 2px solid transparent; }
+        .tab-btn:hover { color: #fff; }
+        .tab-btn.active { color: #60a5fa; border-bottom: 2px solid #60a5fa; }
+
+        .control-group { display: flex; flex-direction: column; gap: 5px; }
+        label { font-size: 14px; font-weight: 500; color: #cbd5e1; }
+        .slider-label-row { display: flex; justify-content: space-between; align-items: center; }
+        .dv-type { font-size: 11px; font-weight: bold; padding: 2px 6px; border-radius: 4px; }
+        .prograde-lbl { background: #065f46; color: #34d399; }
+        .retrograde-lbl { background: #7f1d1d; color: #f87171; }
+        
+        input[type="range"] { width: 100%; cursor: pointer; }
+        button { padding: 10px; background: #1e293b; color: #fff; border: 1px solid #475569; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s; font-size: 13px; }
+        button:hover { background: #334155; }
+        button.active { background: #d97706; border-color: #f59e0b; }
+        
+        .btn-row { display: flex; gap: 5px; }
+        .btn-row button { flex: 1; }
+
+        #metrics { background: #000; padding: 15px; border-radius: 8px; border: 1px solid #222; }
+        .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+        .metric-box { display: flex; flex-direction: column; }
+        .metric-label { font-size: 11px; color: #94a3b8; text-transform: uppercase; }
+        .metric-value { font-size: 18px; font-weight: bold; color: #38bdf8; font-family: monospace; }
+        
+        #status-box { padding: 10px; background: #1e3a8a; color: white; text-align: center; font-weight: bold; border-radius: 4px; font-size: 15px; letter-spacing: 1px; transition: background 0.3s; }
+
+        .energy-section { margin-top: 10px; }
+        .energy-title { font-size: 12px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase;}
+        .bar-container { display: flex; align-items: center; height: 16px; background: #111; border: 1px solid #333; border-radius: 4px; margin-bottom: 8px; position: relative; overflow: hidden; }
+        .bar-center-line { position: absolute; left: 50%; top: 0; bottom: 0; width: 1px; background: #666; z-index: 2; }
+        .bar-fill { height: 100%; transition: width 0.15s ease-out; }
+        .bar-neg { background: #ef4444; position: absolute; right: 50%; }
+        .bar-pos { background: #22c55e; position: absolute; left: 50%; }
+        .bar-delta { background: #eab308; position: absolute; z-index: 1; pointer-events: none; }
+        .bar-label { position: absolute; left: 5px; font-size: 10px; z-index: 3; color: white; line-height: 16px; text-shadow: 1px 1px 0 #000;}
+
+        #edu-panel { font-size: 13px; line-height: 1.5; color: #a1a1aa; background: #18181b; padding: 12px; border-radius: 6px; border-left: 3px solid #60a5fa; transition: all 0.3s; }
+        .edu-highlight { color: #fcd34d !important; font-weight: bold; border-left-color: #fcd34d !important; background: #27272a !important; }
+        
+        #loi-text { margin-top: 8px; padding-top: 8px; border-top: 1px solid #333; display: none; }
+
+        /* Mission specific styling */
+        #mission-controls { display: none; }
+        .mission-note { font-size: 12px; color: #94a3b8; margin-top: 0; line-height: 1.5; background: #111827; padding: 10px 12px; border-radius: 8px; border: 1px solid #1f2937; }
+        .mission-btn-grid { display: grid; grid-template-columns: 1fr; gap: 8px; margin-bottom: 6px; }
+        .mission-btn { width: 100%; text-align: left; padding: 10px 12px; border-radius: 8px; }
+        .mission-btn.selected { outline: 2px solid rgba(255,255,255,0.75); box-shadow: 0 0 0 2px rgba(59,130,246,0.35); transform: translateY(-1px); }
+        #mission-sequence-buttons { margin-top: 14px; padding-top: 14px; border-top: 1px solid #334155; }
+        #btn-mission-load.secondary { background: #1e40af !important; border-color: #60a5fa; }
+        #btn-mission-next.primary-next { background: #0f766e !important; border-color: #2dd4bf; color: #f0fdfa; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12); }
+        #btn-mission-next:disabled { opacity: 0.6; }
+        #mission-plan-box { margin-top: 12px; padding: 14px; background: #0f172a; border-left: 4px solid #38bdf8; font-size: 13px; line-height: 1.55; color: #dbeafe; min-height: 110px; }
+        #mission-plan-box b { color: #fff; }
+        #mission-text-box { margin-top: 12px; padding: 15px; background: #111; border-left: 4px solid #f59e0b; font-size: 14px; line-height: 1.5; color: #fff; min-height: 90px; }
+        #mission-step-list { padding: 12px 14px; background: #0b1220; border: 1px solid #1e293b; border-radius: 8px; font-size: 12px; line-height: 1.5; color: #cbd5e1; }
+        .mission-step-title { font-size: 12px; font-weight: 700; color: #f8fafc; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .mission-step-items { display: grid; gap: 8px; }
+        .mission-step-item { padding: 9px 10px; border-radius: 8px; border: 1px solid #1e293b; background: #111827; }
+        .mission-step-item.current { border-color: #22d3ee; background: #082f49; }
+        .mission-step-item.complete { border-color: #16a34a; background: #052e16; }
+        .mission-step-item.pending { border-color: #334155; background: #0f172a; }
+        .mission-step-item b { color: #fff; }
+        .mission-step-meta { color: #93c5fd; font-size: 11px; margin-top: 3px; }
+
+        .controls-help { font-size: 11px; color: #94a3b8; background: #0f172a; padding: 10px; border-radius: 6px; border: 1px solid #1e293b; line-height: 1.6; }
+        .controls-help b { color: #e2e8f0; }
+        .tuning-panel { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 10px 12px; }
+        .tuning-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #e2e8f0; }
+        .tuning-panel[open] summary { margin-bottom: 10px; }
+        .slider-subrow { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11px; color: #94a3b8; margin-top: 4px; }
+        .slider-subrow button { padding: 4px 8px; font-size: 11px; background: #0f766e; border-color: #14b8a6; }
+        .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #cbd5e1; }
+        .checkbox-row input { transform: scale(1.1); accent-color: #10b981; }
+        .tuning-note { font-size: 11px; color: #94a3b8; line-height: 1.5; margin-top: 4px; }
+        .palette-panel { background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 10px 12px; }
+        .palette-panel summary { cursor: pointer; font-size: 13px; font-weight: 700; color: #e2e8f0; }
+        .palette-panel[open] summary { margin-bottom: 10px; }
+        .palette-grid { display: grid; gap: 10px; }
+        .palette-row { padding: 8px 10px; border-radius: 8px; background: #0f172a; border: 1px solid #1e293b; }
+        .palette-row-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .palette-row-top label { font-size: 12px; margin: 0; }
+        .palette-row-top input[type="color"] { width: 34px; height: 24px; border: none; background: transparent; padding: 0; cursor: pointer; }
+        .palette-brightness { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+        .palette-brightness span { font-size: 11px; color: #94a3b8; min-width: 38px; text-align: right; }
+        #view-instructions { position: fixed; left: 14px; bottom: 12px; z-index: 9; padding: 6px 8px; border-radius: 8px; background: rgba(8, 12, 22, 0.72); border: 1px solid rgba(71, 85, 105, 0.58); color: #94a3b8; font-size: 10px; line-height: 1.4; max-width: 360px; pointer-events: none; backdrop-filter: blur(2px); }
+        #view-instructions b { color: #e2e8f0; }
+        #feedback-link { position: fixed; right: 14px; bottom: 12px; z-index: 9; padding: 6px 10px; border-radius: 8px; background: rgba(8, 12, 22, 0.72); border: 1px solid rgba(71, 85, 105, 0.58); color: #cbd5e1; font-size: 11px; line-height: 1.25; text-decoration: none; backdrop-filter: blur(2px); }
+        #feedback-link:hover { background: rgba(15, 23, 42, 0.9); color: #fff; border-color: rgba(96, 165, 250, 0.75); }
+        #feedback-link small { display: block; font-size: 10px; color: #94a3b8; }
+
+        #event-toast { display: none; position: absolute; top: 30px; left: 50%; transform: translateX(-50%); background: rgba(15, 23, 42, 0.95); border: 2px solid #3b82f6; padding: 20px 30px; border-radius: 8px; z-index: 100; color: #fff; font-size: 16px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.8); pointer-events: none; transition: opacity 0.5s; line-height: 1.4; }
+        #event-toast b { font-size: 18px; }
+
+        #glitch-toast { display: none; position: absolute; bottom: 20px; right: 20px; background: rgba(30, 10, 10, 0.9); border: 1px solid #ef4444; border-left: 4px solid #ef4444; padding: 15px; border-radius: 6px; width: 280px; z-index: 100; color: #fca5a5; font-size: 12px; font-family: monospace; box-shadow: 0 4px 12px rgba(0,0,0,0.5); pointer-events: none; }
+        #glitch-toast strong { color: #ef4444; font-size: 14px; }
+    </style>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-WKYGJYERSR"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-WKYGJYERSR');
+</script>
+</head>
+<body>
+
+<div id="event-toast"></div>
+<div id="glitch-toast">
+    <strong>Mathematical Singularity</strong><br><br>
+    Distance to central mass approached zero with collisions disabled. Simulated acceleration spiked toward infinity, resulting in an artificial slingshot.
+</div>
+
+<div id="view-instructions"><b>View</b> Mouse or trackpad drag = rotate · Ctrl+drag = pan · wheel, scroll or pinch = zoom · arrows = rotate · Ctrl+arrows = pan · Shift+↑/↓ = zoom.</div>
+<a id="feedback-link" href="https://docs.google.com/forms/d/e/1FAIpQLSeOJN6TWzFv8Lli8lkw6WNXawqsPWsMmHApplRWAyh-mPFe4Q/viewform" target="_blank" rel="noopener noreferrer">Feedback<small>opens form</small></a>
+
+<div id="ui-container">
+    
+    <div class="tabs">
+        <button id="tab-static" class="tab-btn active">Static System</button>
+        <button id="tab-dynamic" class="tab-btn">Dynamic System</button>
+        <button id="tab-missions" class="tab-btn">Historical Missions</button>
+    </div>
+
+    <details class="palette-panel" id="palette-panel">
+        <summary>Palette and brightness</summary>
+        <div class="control-group">
+            <label for="palette-select">Preset palette</label>
+            <select id="palette-select" style="padding:8px 10px; background:#0f172a; color:#e2e8f0; border:1px solid #334155; border-radius:6px;">
+                <option value="classic">Classic classroom</option>
+                <option value="midnight">Midnight neon</option>
+                <option value="soft">Soft night</option>
+                <option value="highcontrast">High contrast</option>
+                <option value="custom">Custom</option>
+            </select>
+        </div>
+        <div class="palette-grid">
+            <div class="palette-row">
+                <div class="palette-row-top"><label for="grid-color">Grid / well</label><input type="color" id="grid-color" value="#1e3a8a"></div>
+                <div class="palette-brightness"><input type="range" id="grid-brightness" min="0" max="2" step="0.05" value="1"><span id="grid-brightness-val">1.00×</span></div>
+            </div>
+            <div class="palette-row">
+                <div class="palette-row-top"><label for="earth-color">Earth</label><input type="color" id="earth-color" value="#10b981"></div>
+                <div class="palette-brightness"><input type="range" id="earth-brightness" min="0" max="2" step="0.05" value="1"><span id="earth-brightness-val">1.00×</span></div>
+            </div>
+            <div class="palette-row">
+                <div class="palette-row-top"><label for="moon-color">Moon</label><input type="color" id="moon-color" value="#a3a3a3"></div>
+                <div class="palette-brightness"><input type="range" id="moon-brightness" min="0" max="2" step="0.05" value="1"><span id="moon-brightness-val">1.00×</span></div>
+            </div>
+            <div class="palette-row">
+                <div class="palette-row-top"><label for="satellite-color">Spacecraft / trail</label><input type="color" id="satellite-color" value="#f59e0b"></div>
+                <div class="palette-brightness"><input type="range" id="satellite-brightness" min="0" max="2" step="0.05" value="1"><span id="satellite-brightness-val">1.00×</span></div>
+            </div>
+        </div>
+    </details>
+
+    <div id="manual-controls">
+        <div class="btn-row">
+            <button id="toggle-moon" style="background: #3730a3;">System view: Earth only</button>
+            <button id="toggle-crashes" style="background: #047857;">Collisions: ON</button>
+        </div>
+
+        <div class="control-group">
+            <label>Sim Speed: <span id="speed-val">1.0</span>x</label>
+            <input type="range" id="speed-slider" min="0.1" max="5.0" step="0.1" value="1.0">
+        </div>
+
+        <details class="tuning-panel" id="manual-model-panel">
+            <summary>Earth–Moon model tuning</summary>
+            <div class="control-group">
+                <label>Moon/Earth mass ratio: <span id="mass-ratio-val">0.1000</span></label>
+                <input type="range" id="mass-ratio-slider" min="0.000" max="0.200" step="0.001" value="0.100" list="mass-ratio-marks">
+                <div class="slider-subrow"><span>Real ≈ 0.0123</span><button id="btn-real-mass" type="button">Set real</button></div>
+            </div>
+            <div class="control-group">
+                <label>Earth–Moon distance: <span id="distance-ratio-val">15.0</span> Earth radii</label>
+                <input type="range" id="distance-ratio-slider" min="8" max="80" step="0.5" value="15.0" list="distance-ratio-marks">
+                <div class="slider-subrow"><span>Real ≈ 60.3 Earth radii</span><button id="btn-real-distance" type="button">Set real</button></div>
+            </div>
+            <div class="control-group">
+                <label>Moon/Earth radius ratio: <span id="radius-ratio-val">0.625</span></label>
+                <input type="range" id="radius-ratio-slider" min="0.100" max="0.800" step="0.001" value="0.625" list="radius-ratio-marks">
+                <div class="slider-subrow"><span>Real ≈ 0.273</span><button id="btn-real-radius" type="button">Set real</button></div>
+            </div>
+            <label class="checkbox-row"><input type="checkbox" id="toggle-leo-suppression" checked> Suppress the Moon's pull in low Earth orbit</label>
+            <div class="tuning-note">These sliders affect the manual Static and Dynamic tabs only. Historical Missions stays on its own fixed teaching set-up.</div>
+        </details>
+
+        <datalist id="mass-ratio-marks"><option value="0.0123" label="Real"></option></datalist>
+        <datalist id="distance-ratio-marks"><option value="60.3" label="Real"></option></datalist>
+        <datalist id="radius-ratio-marks"><option value="0.273" label="Real"></option></datalist>
+
+        <div class="control-group">
+            <label>Initial Circular Radius: <span id="radius-val">1.5</span> Earth radii</label>
+            <input type="range" id="radius-slider" min="1.1" max="7.5" step="0.1" value="1.5">
+            <button id="btn-reset">Reset to Circular Orbit</button>
+        </div>
+
+        <div class="control-group">
+            <div class="slider-label-row">
+                <label>Delta-V: <span id="dv-val" style="font-family: monospace;">+1.0</span></label>
+                <span id="dv-type-lbl" class="dv-type prograde-lbl">Prograde</span>
+            </div>
+            <input type="range" id="dv-slider" min="-3.0" max="6.0" step="0.1" value="1.0">
+            <div class="btn-row" style="margin-top: 5px;">
+                <button id="btn-perigee" style="padding: 10px 5px; font-size: 11px;">Schedule Burn at Perigee</button>
+                <button id="btn-apogee" style="padding: 10px 5px; font-size: 11px;">Schedule Burn at Apogee</button>
+            </div>
+            
+            <button id="toggle-radial" style="margin-top: 5px; background: transparent; border: 1px dashed #475569; color: #94a3b8; font-size: 11px;">+ Advanced: Show Radial Burns</button>
+            <div id="radial-container" style="display: none; margin-top: 5px;">
+                <button id="btn-radial" style="background: #475569; width: 100%; line-height: 1.35;">Immediate Radial Burn (Side-Boost)<br><span style="font-size: 11px; color: #cbd5e1; font-weight: 500;">+ = away from centre, - = toward centre</span></button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mission-controls">
+        <p class="mission-note">Step-through teaching sequences: each mission is broken into named burns and coast phases. The aim here is to show which burn happened at Earth perigee, Earth apogee, lunar perilune, or during a flyby, rather than to reproduce an exact historical ephemeris.</p>
+        
+        <div class="control-group" style="margin-bottom: 10px;">
+            <label>Animation Speed: <span id="mission-speed-val">1.0</span>x</label>
+            <input type="range" id="mission-speed-slider" min="0.1" max="5.0" step="0.1" value="1.0">
+        </div>
+
+        <div id="mission-button-list" class="mission-btn-grid"></div>
+
+        <div style="font-size:11px; color:#94a3b8; text-transform:uppercase; letter-spacing:0.05em; margin-top:4px;">Selected mission controls</div>
+        <div id="mission-sequence-buttons" class="control-group" style="display:none;">
+            <button id="btn-mission-load" style="width:100%; background: #1d4ed8;">1. Put spacecraft into starting Earth orbit</button>
+            <div class="btn-row">
+                <button id="btn-mission-next" disabled>Next step</button>
+                <button id="btn-abort-mission" style="background: #475569;">Reset mission</button>
+            </div>
+        </div>
+        
+        <div id="mission-plan-box">
+            Select a mission to see what it was trying to do, which orbit family it used, and the burn-by-burn sequence.
+        </div>
+        <div id="mission-step-list" class="mission-step-list">
+            Select a mission to see the step-by-step burn list.
+        </div>
+        <div id="mission-text-box">
+            Select a mission, then use the first button to place the spacecraft into its starting Earth orbit.
+        </div>
+    </div>
+
+    <div id="metrics">
+        <div id="status-box">Orbiting Earth</div>
+        
+        <div class="metric-grid" style="margin-top: 15px;">
+            <div class="metric-box">
+                <span class="metric-label" id="lbl-alt">Earth Alt (r)</span>
+                <span class="metric-value" id="m-alt">0.00</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label">Velocity (v)</span>
+                <span class="metric-value" id="m-vel">0.00</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label">Semi-Major (a)</span>
+                <span class="metric-value" id="m-sma">0.00</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label">Eccentricity (e)</span>
+                <span class="metric-value" id="m-ecc">0.00</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label" id="lbl-per">Perigee (rp)</span>
+                <span class="metric-value" id="m-per">0.00</span>
+            </div>
+            <div class="metric-box">
+                <span class="metric-label" id="lbl-apo">Apogee (ra)</span>
+                <span class="metric-value" id="m-apo">0.00</span>
+            </div>
+            <div class="metric-box" style="grid-column: span 2;">
+                <span class="metric-label">Orbital Period (T)</span>
+                <span class="metric-value" id="m-period" style="color: #cbd5e1;">0.0 h</span>
+            </div>
+        </div>
+
+        <div class="energy-section">
+            <div class="energy-title">Specific Energy</div>
+            <div class="bar-container">
+                <div class="bar-center-line"></div>
+                <div class="bar-label">Kinetic (Ek)</div>
+                <div class="bar-fill bar-pos" id="bar-ek"></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-center-line"></div>
+                <div class="bar-label">Potential (Ep)</div>
+                <div class="bar-fill bar-neg" id="bar-ep"></div>
+            </div>
+            <div class="bar-container">
+                <div class="bar-center-line"></div>
+                <div class="bar-label">Total (E)</div>
+                <div class="bar-fill bar-neg" id="bar-et-neg"></div>
+                <div class="bar-fill bar-pos" id="bar-et-pos"></div>
+                <div class="bar-fill bar-delta" id="bar-et-delta" style="opacity: 0; width: 0%; left: 50%;"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="edu-panel-container">
+        <div id="edu-panel">
+            <div id="edu-main-text"></div>
+            <div id="loi-text">
+                <i>Lunar Encounter:</i> You are falling into the Moon's well! To stay here, schedule a <b>Retrograde (-)</b> burn at lunar perilune for <b>Lunar orbit insertion (LOI)</b>.
+            </div>
+        </div>
+    </div>
+
+    <div class="controls-help">
+        <b>Navigation:</b> Left-Click to Rotate | Arrow Keys/Right-Click to Pan | Scroll to Zoom<br>
+        <b>Tip:</b> The <i>System view</i> button toggles between Earth-only and Earth–Moon views.
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+<script>
+
+    const FEEDBACK_FORM_PUBLIC_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeOJN6TWzFv8Lli8lkw6WNXawqsPWsMmHApplRWAyh-mPFe4Q/viewform';
+    const FEEDBACK_PREFILL_TEMPLATE_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeOJN6TWzFv8Lli8lkw6WNXawqsPWsMmHApplRWAyh-mPFe4Q/viewform?usp=pp_url&entry.1941148521=_CONTEXT_&entry.67668401=_MESSAGE_'; // Google Forms pre-filled link template.
+
+    function getCurrentTabLabel() {
+        if (isMissionMode) return 'Historical Missions';
+        if (isDynamicSystem) return 'Dynamic System';
+        return 'Static System';
+    }
+
+    function getSelectedMissionTitle() {
+        if (!selectedMissionId || !missionCatalog[selectedMissionId]) return 'None';
+        return missionCatalog[selectedMissionId].title;
+    }
+
+    function getSelectedMissionStepTitle() {
+        if (!scriptedMission || !scriptedMission.steps || !scriptedMission.steps.length) return 'None';
+        const idx = Math.min(scriptedMission.segmentIndex || 0, scriptedMission.steps.length - 1);
+        const step = scriptedMission.steps[idx];
+        return step && step.title ? step.title : 'None';
+    }
+
+    function buildFeedbackContextText() {
+        const parts = [
+            `Time: ${new Date().toISOString()}`,
+            `Tab: ${getCurrentTabLabel()}`,
+            `Mission: ${getSelectedMissionTitle()}`,
+            `Mission step: ${getSelectedMissionStepTitle()}`,
+            `Mission active: ${scriptedMission ? (!!scriptedMission.active) : false}`,
+            `Mission complete: ${scriptedMission ? (!!scriptedMission.complete) : false}`,
+            `System: ${hasMoon ? 'Earth–Moon' : 'Earth only'}`,
+            `Animation / sim speed: ${simSpeed.toFixed(1)}x`,
+            `Delta-V slider: ${deltaV.toFixed(1)}`,
+            `Scheduled burn: ${scheduledBoost || 'none'}`,
+            `Collisions: ${collisionsEnabled ? 'ON' : 'OFF'}`,
+            `Low-Earth lunar suppression: ${leoMoonSuppression ? 'ON' : 'OFF'}`,
+            `Earth position: (${pos.x.toFixed(2)}, ${pos.y.toFixed(2)})`,
+            `Velocity: (${vel.x.toFixed(2)}, ${vel.y.toFixed(2)})`,
+            `In Moon SOI: ${inMoonSOI ? 'yes' : 'no'}`,
+            `Page: ${window.location.href}`
+        ];
+        return parts.join('\n');
+    }
+
+    function buildFeedbackUrl() {
+        const context = buildFeedbackContextText();
+        const template = FEEDBACK_PREFILL_TEMPLATE_URL.trim();
+        if (!template) return FEEDBACK_FORM_PUBLIC_URL;
+        return template
+            .replace(/__CONTEXT__/g, encodeURIComponent(context))
+            .replace(/_CONTEXT_/g, encodeURIComponent(context))
+            .replace(/__MESSAGE__/g, '')
+            .replace(/_MESSAGE_/g, '');
+    }
+
+    function updateFeedbackLink() {
+        const link = document.getElementById('feedback-link');
+        if (!link) return;
+        link.href = buildFeedbackUrl();
+        link.title = FEEDBACK_PREFILL_TEMPLATE_URL.trim()
+            ? 'Open feedback form with current simulator context pre-filled.'
+            : 'Open feedback form. Current simulator context will also be copied to the clipboard.';
+    }
+
+    function positionOverlayUi() {
+        const sidebar = document.getElementById('ui-container');
+        const hint = document.getElementById('view-instructions');
+        if (!sidebar || !hint) return;
+        const rect = sidebar.getBoundingClientRect();
+        const desiredLeft = rect.right + 14;
+        const maxLeft = Math.max(14, window.innerWidth - hint.offsetWidth - 14);
+        hint.style.left = `${Math.max(14, Math.min(desiredLeft, maxLeft))}px`;
+    }
+
+    // --- Physics Constants & State ---
+    const G = 1;
+    const Z_CAP = -220; 
+    const R_EARTH_COL = 4.0;
+    const SOI_MOON = 12.0;
+    const REAL_MOON_MASS_RATIO = 0.0123;
+    const REAL_MOON_DISTANCE_RE = 60.3;
+    const REAL_MOON_RADIUS_RATIO = 0.273;
+    const MANUAL_DEFAULT_MODEL = { moonMassRatio: 0.100, moonDistanceRe: 15.0, moonRadiusRatio: 0.625 };
+    const HISTORICAL_MODEL = { moonMassRatio: 0.100, moonDistanceRe: 15.0, moonRadiusRatio: 0.625 };
+    const M_EARTH = 1000;
+    let M_MOON = M_EARTH * MANUAL_DEFAULT_MODEL.moonMassRatio;
+    let MOON_DIST = MANUAL_DEFAULT_MODEL.moonDistanceRe * R_EARTH_COL;
+    let R_MOON_COL = MANUAL_DEFAULT_MODEL.moonRadiusRatio * R_EARTH_COL;
+    let collisionsEnabled = true;
+    let leoMoonSuppression = true;
+    
+    // Tab & Mission State
+    let isDynamicSystem = false;
+    let isMissionMode = false;
+    let scriptedMission = null;
+    let scriptedStatusOverride = null;
+    let scriptedFrame = null;
+
+    let moonAngle = 0;
+    function getMoonOmega() { return Math.sqrt((G * M_EARTH) / Math.pow(MOON_DIST, 3)); }
+    let currentMoonX = MOON_DIST;
+    let currentMoonY = 0;
+
+    let hasMoon = false;
+    let scheduledBoost = null; 
+    let deltaV = 1.0;
+    let simSpeed = 1.0; 
+    
+    let pos = new THREE.Vector3();
+    let vel = new THREE.Vector3();
+    let isCrashed = false;
+    let isGlitched = false;
+    let crashTarget = "";
+    let maxAltSinceLaunch = 0; 
+    let inMoonSOI = false; 
+    
+    let trail = [];
+    const TRAIL_LENGTH = 4000; 
+    let trailDistTracker = 0;
+    let particles = [];
+    
+    let prevR = 0;
+    let prevRDot = 0;
+    let currentEccentricity = 0;
+    let showMarkers = true;
+    let pendingApsisWait = null; 
+
+    let deltaE_Width = 0, deltaE_Left = 0, deltaE_Opacity = 0;
+    const MAX_ENERGY_VISUAL = 250; 
+    
+    let toastTimeout;
+    function showToast(htmlMsg, duration=6000, color='#3b82f6') {
+        let toast = document.getElementById('event-toast');
+        toast.innerHTML = htmlMsg;
+        toast.style.borderColor = color;
+        toast.style.display = 'block';
+        toast.style.opacity = 1;
+        clearTimeout(toastTimeout);
+        toastTimeout = setTimeout(() => {
+            toast.style.opacity = 0;
+            setTimeout(() => toast.style.display = 'none', 500);
+        }, duration);
+    }
+
+    // --- Three.js Setup ---
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.003);
+
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 5000);
+    camera.up.set(0, 0, 1);
+    camera.position.set(0, -110, 100);
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
+
+    const controls = new THREE.OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.rotateSpeed = 0.75;
+    controls.zoomSpeed = 0.75;
+    controls.maxDistance = 4200;
+    controls.screenSpacePanning = true;
+    controls.target.set(0, 0, -40); 
+    controls.mouseButtons = { LEFT: THREE.MOUSE.ROTATE, MIDDLE: THREE.MOUSE.DOLLY, RIGHT: THREE.MOUSE.PAN };
+
+    function getCameraRightAxis() {
+        return new THREE.Vector3().setFromMatrixColumn(camera.matrix, 0).normalize();
+    }
+    function getProjectedScreenVector(columnIndex, fallback) {
+        const v = new THREE.Vector3().setFromMatrixColumn(camera.matrix, columnIndex);
+        v.z = 0;
+        if (v.lengthSq() < 1e-6) return fallback.clone();
+        return v.normalize();
+    }
+    function rotateView(axis, angle) {
+        const offset = camera.position.clone().sub(controls.target);
+        offset.applyAxisAngle(axis.clone().normalize(), angle);
+        camera.position.copy(controls.target.clone().add(offset));
+        camera.lookAt(controls.target);
+    }
+    function panView(dx, dy) {
+        const right = getProjectedScreenVector(0, new THREE.Vector3(1, 0, 0));
+        const up = getProjectedScreenVector(1, new THREE.Vector3(0, 1, 0));
+        const move = right.multiplyScalar(dx).add(up.multiplyScalar(dy));
+        camera.position.add(move);
+        controls.target.add(move);
+    }
+    function zoomView(scaleFactor) {
+        const offset = camera.position.clone().sub(controls.target);
+        offset.multiplyScalar(scaleFactor);
+        camera.position.copy(controls.target.clone().add(offset));
+    }
+
+    renderer.domElement.addEventListener('mousedown', (e) => {
+        if (document.activeElement) document.activeElement.blur();
+        controls.mouseButtons.LEFT = e.ctrlKey ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    });
+    window.addEventListener('mouseup', () => {
+        controls.mouseButtons.LEFT = THREE.MOUSE.ROTATE;
+    });
+    window.addEventListener('keydown', (e) => {
+        const arrowKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        if (!arrowKeys.includes(e.key)) return;
+        e.preventDefault();
+        if (document.activeElement) document.activeElement.blur();
+        const rotateStep = 0.065;
+        const panStep = 3.0;
+        if (e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+            zoomView(e.key === 'ArrowUp' ? 0.92 : 1.08);
+        } else if (e.ctrlKey) {
+            if (e.key === 'ArrowUp') panView(0, panStep);
+            if (e.key === 'ArrowDown') panView(0, -panStep);
+            if (e.key === 'ArrowLeft') panView(-panStep, 0);
+            if (e.key === 'ArrowRight') panView(panStep, 0);
+        } else {
+            if (e.key === 'ArrowLeft') rotateView(new THREE.Vector3(0, 0, 1), rotateStep);
+            if (e.key === 'ArrowRight') rotateView(new THREE.Vector3(0, 0, 1), -rotateStep);
+            if (e.key === 'ArrowUp') rotateView(getCameraRightAxis(), rotateStep);
+            if (e.key === 'ArrowDown') rotateView(getCameraRightAxis(), -rotateStep);
+        }
+        controls.update();
+    }, { passive: false });
+
+    // --- Visual Objects ---
+    let geometry = new THREE.PlaneGeometry(360, 360, 200, 200);
+    let currentGridSize = 360;
+    const material = new THREE.MeshBasicMaterial({ color: 0x1e3a8a, wireframe: true, transparent: true, opacity: 0.3 });
+    const wellMesh = new THREE.Mesh(geometry, material);
+    scene.add(wellMesh);
+
+    const earthMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+    const earth = new THREE.Mesh(new THREE.SphereGeometry(R_EARTH_COL, 32, 32), earthMat);
+    scene.add(earth);
+
+    const satMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    const satellite = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 16), satMat);
+    scene.add(satellite);
+
+    const trailGeo = new THREE.BufferGeometry();
+    const trailMat = new THREE.PointsMaterial({ color: 0xffcc00, size: 3, sizeAttenuation: false, opacity: 0.8, transparent: true });
+    const trailLine = new THREE.Points(trailGeo, trailMat);
+    scene.add(trailLine);
+
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xa3a3a3 });
+    const moon = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), moonMat);
+    moon.scale.set(R_MOON_COL, R_MOON_COL, R_MOON_COL);
+    scene.add(moon);
+    moon.visible = false;
+
+    const moonOrbitGeo = new THREE.BufferGeometry();
+    const moonOrbitLine = new THREE.Line(moonOrbitGeo, new THREE.LineBasicMaterial({color: 0x475569, transparent: true, opacity: 0.5}));
+    scene.add(moonOrbitLine);
+    moonOrbitLine.visible = false;
+
+    function createTextSprite(text, color) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 64; canvas.height = 64;
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = color;
+        ctx.font = 'Bold 45px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(text, 32, 32);
+        const texture = new THREE.CanvasTexture(canvas);
+        const mat = new THREE.SpriteMaterial({ map: texture, depthTest: false });
+        const sprite = new THREE.Sprite(mat);
+        sprite.scale.set(7, 7, 1);
+        return sprite;
+    }
+    const perigeeMarker = createTextSprite('P', '#4ade80');
+    const apogeeMarker = createTextSprite('A', '#f87171');
+    scene.add(perigeeMarker);
+    scene.add(apogeeMarker);
+
+    function updateMoonScale() {
+        moon.scale.set(R_MOON_COL, R_MOON_COL, R_MOON_COL);
+    }
+
+    const PALETTE_PRESETS = {
+        classic: { grid: '#1e3a8a', gridBrightness: 1.0, earth: '#10b981', earthBrightness: 1.0, moon: '#a3a3a3', moonBrightness: 1.0, satellite: '#f59e0b', satelliteBrightness: 1.0 },
+        midnight: { grid: '#1d4ed8', gridBrightness: 1.15, earth: '#22c55e', earthBrightness: 0.95, moon: '#cbd5e1', moonBrightness: 0.95, satellite: '#facc15', satelliteBrightness: 1.05 },
+        soft: { grid: '#3b82f6', gridBrightness: 0.72, earth: '#34d399', earthBrightness: 0.82, moon: '#d4d4d8', moonBrightness: 0.82, satellite: '#fb923c', satelliteBrightness: 0.88 },
+        highcontrast: { grid: '#60a5fa', gridBrightness: 1.5, earth: '#00ff99', earthBrightness: 1.2, moon: '#ffffff', moonBrightness: 1.1, satellite: '#ffb000', satelliteBrightness: 1.25 }
+    };
+
+    function applyBrightnessToHex(hex, brightness) {
+        const c = new THREE.Color(hex);
+        c.multiplyScalar(brightness);
+        c.r = Math.min(1, Math.max(0, c.r));
+        c.g = Math.min(1, Math.max(0, c.g));
+        c.b = Math.min(1, Math.max(0, c.b));
+        return c;
+    }
+    function getPaletteStateFromUi() {
+        return {
+            grid: document.getElementById('grid-color').value,
+            gridBrightness: parseFloat(document.getElementById('grid-brightness').value),
+            earth: document.getElementById('earth-color').value,
+            earthBrightness: parseFloat(document.getElementById('earth-brightness').value),
+            moon: document.getElementById('moon-color').value,
+            moonBrightness: parseFloat(document.getElementById('moon-brightness').value),
+            satellite: document.getElementById('satellite-color').value,
+            satelliteBrightness: parseFloat(document.getElementById('satellite-brightness').value)
+        };
+    }
+    function setPaletteControls(state) {
+        document.getElementById('grid-color').value = state.grid;
+        document.getElementById('grid-brightness').value = state.gridBrightness;
+        document.getElementById('earth-color').value = state.earth;
+        document.getElementById('earth-brightness').value = state.earthBrightness;
+        document.getElementById('moon-color').value = state.moon;
+        document.getElementById('moon-brightness').value = state.moonBrightness;
+        document.getElementById('satellite-color').value = state.satellite;
+        document.getElementById('satellite-brightness').value = state.satelliteBrightness;
+        ['grid', 'earth', 'moon', 'satellite'].forEach(name => {
+            document.getElementById(`${name}-brightness-val`).innerText = `${parseFloat(document.getElementById(`${name}-brightness`).value).toFixed(2)}×`;
+        });
+    }
+    function applyPaletteState(state) {
+        material.color.copy(applyBrightnessToHex(state.grid, state.gridBrightness));
+        material.opacity = Math.max(0.08, Math.min(0.9, 0.28 * state.gridBrightness + 0.05));
+        moonOrbitLine.material.color.copy(applyBrightnessToHex(state.grid, Math.max(0.55, state.gridBrightness * 0.7)));
+        moonOrbitLine.material.opacity = Math.max(0.18, Math.min(0.8, 0.38 * state.gridBrightness));
+        earthMat.color.copy(applyBrightnessToHex(state.earth, state.earthBrightness));
+        moonMat.color.copy(applyBrightnessToHex(state.moon, state.moonBrightness));
+        satMat.color.copy(applyBrightnessToHex(state.satellite, state.satelliteBrightness));
+        trailMat.color.copy(applyBrightnessToHex(state.satellite, Math.max(0.7, state.satelliteBrightness * 0.95)));
+    }
+    function applyPalettePreset(presetName) {
+        const preset = PALETTE_PRESETS[presetName];
+        if (!preset) return;
+        setPaletteControls(preset);
+        applyPaletteState(getPaletteStateFromUi());
+    }
+
+    function getSceneExtent() {
+        let maxExtent = 90;
+        maxExtent = Math.max(maxExtent, Math.abs(pos.x) + 24, Math.abs(pos.y) + 24);
+        if (hasMoon) maxExtent = Math.max(maxExtent, Math.abs(currentMoonX) + 26, Math.abs(currentMoonY) + 26, MOON_DIST + 26);
+        if (trail.length) {
+            for (let i = 0; i < trail.length; i += Math.max(1, Math.floor(trail.length / 160))) {
+                maxExtent = Math.max(maxExtent, Math.abs(trail[i].x) + 20, Math.abs(trail[i].y) + 20);
+            }
+        }
+        return maxExtent;
+    }
+    function rebuildPotentialGrid(size) {
+        const segments = Math.max(120, Math.min(320, Math.round(size / 2.2)));
+        const newGeometry = new THREE.PlaneGeometry(size, size, segments, segments);
+        wellMesh.geometry.dispose();
+        wellMesh.geometry = newGeometry;
+        geometry = newGeometry;
+        currentGridSize = size;
+    }
+    function ensureGridCoverage(force=false) {
+        const desired = Math.max(360, Math.min(2400, Math.ceil(getSceneExtent() * 2.45 / 10) * 10));
+        if (force || desired > currentGridSize * 1.08 || desired < currentGridSize * 0.62) {
+            rebuildPotentialGrid(desired);
+        }
+    }
+
+    function updateMoonOrbitLine() {
+        const moonOrbitPts = [];
+        for (let i = 0; i <= 64; i++) {
+            const a = (i / 64) * Math.PI * 2;
+            moonOrbitPts.push(new THREE.Vector3(MOON_DIST * Math.cos(a), MOON_DIST * Math.sin(a), Z_CAP));
+        }
+        moonOrbitGeo.setFromPoints(moonOrbitPts);
+    }
+
+    function syncMoonPositionToModel() {
+        if (isDynamicSystem) {
+            currentMoonX = MOON_DIST * Math.cos(moonAngle);
+            currentMoonY = MOON_DIST * Math.sin(moonAngle);
+        } else {
+            currentMoonX = MOON_DIST;
+            currentMoonY = 0;
+        }
+    }
+
+    function getManualModelFromUI() {
+        return {
+            moonMassRatio: parseFloat(document.getElementById('mass-ratio-slider').value),
+            moonDistanceRe: parseFloat(document.getElementById('distance-ratio-slider').value),
+            moonRadiusRatio: parseFloat(document.getElementById('radius-ratio-slider').value)
+        };
+    }
+
+    function updateManualModelLabels() {
+        document.getElementById('mass-ratio-val').innerText = parseFloat(document.getElementById('mass-ratio-slider').value).toFixed(4);
+        document.getElementById('distance-ratio-val').innerText = parseFloat(document.getElementById('distance-ratio-slider').value).toFixed(1);
+        document.getElementById('radius-ratio-val').innerText = parseFloat(document.getElementById('radius-ratio-slider').value).toFixed(3);
+    }
+
+    function setSimulationModel(model, syncUi=true) {
+        M_MOON = M_EARTH * model.moonMassRatio;
+        MOON_DIST = model.moonDistanceRe * R_EARTH_COL;
+        R_MOON_COL = model.moonRadiusRatio * R_EARTH_COL;
+        updateMoonScale();
+        updateMoonOrbitLine();
+        syncMoonPositionToModel();
+        ensureGridCoverage(true);
+        if (syncUi) {
+            document.getElementById('mass-ratio-slider').value = model.moonMassRatio.toFixed(4);
+            document.getElementById('distance-ratio-slider').value = model.moonDistanceRe.toFixed(1);
+            document.getElementById('radius-ratio-slider').value = model.moonRadiusRatio.toFixed(3);
+            updateManualModelLabels();
+        }
+        ensureGridCoverage(true);
+        updateSurfaces();
+        updateEduPanel();
+    }
+
+    function applyManualModelFromUI() {
+        setSimulationModel(getManualModelFromUI(), false);
+        updateManualModelLabels();
+    }
+
+    updateMoonOrbitLine();
+    updateMoonScale();
+
+    // --- Math & Physics ---
+    function getEarthPotential(x, y) {
+        let r = Math.sqrt(x*x + y*y);
+        let cap = collisionsEnabled ? R_EARTH_COL * 0.8 : 0.5;
+        return - (G * M_EARTH) / Math.max(r, cap); 
+    }
+
+    function clamp01(v) {
+        return Math.max(0, Math.min(1, v));
+    }
+
+    function smoothstep01(v) {
+        const t = clamp01(v);
+        return t * t * (3 - 2 * t);
+    }
+
+    function getMoonInfluenceFactor(px, py) {
+        if (!hasMoon) return 0;
+        if (isMissionMode) return 1;
+        if (!leoMoonSuppression) return 1;
+
+        const rEarthRe = Math.sqrt(px*px + py*py) / R_EARTH_COL;
+        const fadeStartRe = 5.0;
+        const fadeEndRe = 10.0;
+        return smoothstep01((rEarthRe - fadeStartRe) / (fadeEndRe - fadeStartRe));
+    }
+
+    function getPotential(x, y) {
+        let u = getEarthPotential(x, y);
+        if (hasMoon) {
+            let dx = x - currentMoonX;
+            let dy = y - currentMoonY;
+            let rMoon = Math.sqrt(dx*dx + dy*dy);
+            let cap = collisionsEnabled ? R_MOON_COL * 0.8 : 0.5;
+            let moonFactor = getMoonInfluenceFactor(x, y);
+            u += moonFactor * (-(G * M_MOON) / Math.max(rMoon, cap));
+        }
+        return u;
+    }
+
+    function getAccX(px, py) {
+        let rEarthSq = Math.max(px*px + py*py, 0.05); 
+        let ax = - (G * M_EARTH) / rEarthSq * (px / Math.sqrt(rEarthSq));
+        if (hasMoon) {
+            let dx = px - currentMoonX;
+            let dy = py - currentMoonY;
+            let rMoonSq = Math.max(dx*dx + dy*dy, 0.05);
+            let moonFactor = getMoonInfluenceFactor(px, py);
+            ax += moonFactor * (-(G * M_MOON) / rMoonSq * (dx / Math.sqrt(rMoonSq)));
+        }
+        return ax;
+    }
+    
+    function getAccY(px, py) {
+        let rEarthSq = Math.max(px*px + py*py, 0.05);
+        let ay = - (G * M_EARTH) / rEarthSq * (py / Math.sqrt(rEarthSq));
+        if (hasMoon) {
+            let dx = px - currentMoonX;
+            let dy = py - currentMoonY;
+            let rMoonSq = Math.max(dx*dx + dy*dy, 0.05);
+            let moonFactor = getMoonInfluenceFactor(px, py);
+            ay += moonFactor * (-(G * M_MOON) / rMoonSq * (dy / Math.sqrt(rMoonSq)));
+        }
+        return ay;
+    }
+
+    function updateSurfaces() {
+        ensureGridCoverage();
+        const positions = geometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+            let z = getPotential(positions.getX(i), positions.getY(i));
+            positions.setZ(i, Math.max(z, Z_CAP)); 
+        }
+        geometry.attributes.position.needsUpdate = true;
+        if (hasMoon) moon.position.set(currentMoonX, currentMoonY, Math.max(getPotential(currentMoonX, currentMoonY), Z_CAP));
+        earth.position.set(0, 0, Math.max(getPotential(0, 0), Z_CAP) + 1);
+    }
+
+    function setSpeed(newSpeed) {
+        simSpeed = newSpeed;
+        document.getElementById('speed-slider').value = newSpeed;
+        document.getElementById('speed-val').innerText = newSpeed.toFixed(1);
+        document.getElementById('mission-speed-slider').value = newSpeed;
+        document.getElementById('mission-speed-val').innerText = newSpeed.toFixed(1);
+        updateFeedbackLink();
+    }
+
+    function updateEduPanel() {
+        if (isMissionMode) return; 
+
+        let mainText = "";
+        if (isDynamicSystem) {
+            mainText = `<b>Restricted 3-Body Problem:</b> The Moon is now in orbital motion!<br><br>
+            To intercept it, you must calculate <b>Phase Angle</b>. A Trans-lunar injection (TLI) burn takes roughly 3 'Days'. You must shoot where the Moon <i>will be</i>, not where it is!`;
+        } else {
+            mainText = `<b>Velocity Verlet Physics Active:</b> Symplectic integration means orbits are perfectly mathematically stable.`;
+            if (hasMoon) {
+                mainText += `<br><br><b>Earth-Moon System Engaged!</b><br>${leoMoonSuppression ? "Near Earth, the lunar pull is softened a little so low Earth orbits stay readable; farther out, the Moon's influence ramps in for <i>Lunar Transfer Orbit (LTO)</i> work." : "The Moon's full pull is active all the way down into low Earth orbit, so you will see much stronger perturbations."} Schedule a massive Prograde burn (+Delta-V) at Earth Perigee for <b>Trans-lunar injection (TLI)</b>.`;
+            }
+        }
+        document.getElementById('edu-main-text').innerHTML = mainText;
+        document.getElementById('edu-panel').className = '';
+    }
+
+    function resetOrbit() {
+        let rEarthUnits = parseFloat(document.getElementById('radius-slider').value);
+        let r = rEarthUnits * R_EARTH_COL;
+        pos.set(-r, 0, 0);
+        let vMag = Math.sqrt((G * M_EARTH) / r);
+        vel.set(0, -vMag, 0); 
+        
+        isCrashed = false; isGlitched = false; crashTarget = ""; trail = []; scheduledBoost = null;
+        maxAltSinceLaunch = r;
+        updateUIState();
+        prevR = r; prevRDot = 0;
+        showMarkers = true; pendingApsisWait = null;
+        deltaE_Opacity = 0; 
+        
+        if (!isMissionMode) moonAngle = 0;
+        syncMoonPositionToModel();
+
+        document.getElementById('glitch-toast').style.display = 'none';
+        document.getElementById('loi-text').style.display = 'none';
+        updateSurfaces();
+        updateEduPanel();
+    }
+
+    function spawnParticles(position, velocity, magnitude, isRetrograde, color=0xff6600) {
+        let count = Math.min(Math.floor(Math.abs(magnitude) * 100), 500);
+        let exhaustDir = velocity.clone().normalize().multiplyScalar(isRetrograde ? 1 : -1);
+        
+        for(let i=0; i<count; i++) {
+            const p = new THREE.Mesh(new THREE.SphereGeometry(0.5, 4, 4), new THREE.MeshBasicMaterial({ color: color, transparent: true }));
+            p.position.copy(position);
+            let spread = new THREE.Vector3((Math.random()-0.5)*2, (Math.random()-0.5)*2, (Math.random()-0.5)*2);
+            let pVel = exhaustDir.clone().multiplyScalar(Math.random() * 8 + 4).add(spread);
+            particles.push({ mesh: p, life: 1.5, vel: pVel });
+            scene.add(p);
+        }
+    }
+
+    // --- Mission Controller (Scripted Playback) ---
+    function v2(x, y) { return { x, y }; }
+    function pointOnEllipse(center, rx, ry, angle) {
+        return { x: center.x + rx * Math.cos(angle), y: center.y + ry * Math.sin(angle) };
+    }
+    function pointOnFocusedEllipse(focus, rp, ra, periapsisAngle, trueAnomaly) {
+        const safeRp = Math.max(0.01, rp);
+        const safeRa = Math.max(0.01, ra);
+        const e = Math.abs(safeRa - safeRp) / (safeRa + safeRp);
+        if (e < 1e-6) {
+            const angle = periapsisAngle + trueAnomaly;
+            return { x: focus.x + safeRp * Math.cos(angle), y: focus.y + safeRp * Math.sin(angle) };
+        }
+        const p = safeRp * (1 + e);
+        const r = p / (1 + e * Math.cos(trueAnomaly));
+        const angle = periapsisAngle + trueAnomaly;
+        return { x: focus.x + r * Math.cos(angle), y: focus.y + r * Math.sin(angle) };
+    }
+    function cubicBezier(p0, p1, p2, p3, t) {
+        const mt = 1 - t;
+        return {
+            x: (mt ** 3) * p0.x + 3 * (mt ** 2) * t * p1.x + 3 * mt * (t ** 2) * p2.x + (t ** 3) * p3.x,
+            y: (mt ** 3) * p0.y + 3 * (mt ** 2) * t * p1.y + 3 * mt * (t ** 2) * p2.y + (t ** 3) * p3.y
+        };
+    }
+    function easeInOut(t) {
+        return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    }
+    function deriveVelocityFromPath(point, prevPoint, dt) {
+        if (!prevPoint || dt <= 0) return new THREE.Vector3(0, 0, 0);
+        return new THREE.Vector3((point.x - prevPoint.x) / dt, (point.y - prevPoint.y) / dt, 0);
+    }
+    function getMoonSwingbyPoint(seg, t, mission) {
+        const focus = mission.moonPos;
+        const angle = seg.startAngle + seg.deltaAngle * t;
+        const blend = t < 0.5 ? t / 0.5 : (t - 0.5) / 0.5;
+        const easedBlend = 0.5 - 0.5 * Math.cos(Math.PI * blend);
+        const radius = t < 0.5
+            ? seg.rStart + (seg.rPeri - seg.rStart) * easedBlend
+            : seg.rPeri + (seg.rEnd - seg.rPeri) * easedBlend;
+        return {
+            x: focus.x + radius * Math.cos(angle),
+            y: focus.y + radius * Math.sin(angle)
+        };
+    }
+    function getMissionFocus(seg, mission) {
+        if (seg.type === 'moonConic' || seg.type === 'moonOrbit' || seg.type === 'harmonicOrbit' || seg.type === 'moonSwingby') return mission.moonPos;
+        return v2(0, 0);
+    }
+    function getSegmentPoint(seg, t, mission) {
+        const u = seg.eased === false ? t : easeInOut(t);
+        if (seg.type === 'earthOrbit') {
+            return pointOnEllipse(v2(0, 0), seg.rx, seg.ry || seg.rx, seg.startAngle + seg.deltaAngle * t);
+        }
+        if (seg.type === 'moonOrbit') {
+            return pointOnEllipse(mission.moonPos, seg.rx, seg.ry || seg.rx, seg.startAngle + seg.deltaAngle * t);
+        }
+        if (seg.type === 'earthSpiral') {
+            const radius = seg.r0 + (seg.r1 - seg.r0) * u;
+            const ry = seg.ry0 !== undefined ? (seg.ry0 + (seg.ry1 - seg.ry0) * u) : radius;
+            return pointOnEllipse(v2(0, 0), radius, ry, seg.startAngle + seg.deltaAngle * t);
+        }
+        if (seg.type === 'earthConic') {
+            return pointOnFocusedEllipse(v2(0, 0), seg.rp, seg.ra, seg.periapsisAngle, seg.startNu + seg.deltaNu * t);
+        }
+        if (seg.type === 'moonConic') {
+            return pointOnFocusedEllipse(mission.moonPos, seg.rp, seg.ra, seg.periapsisAngle, seg.startNu + seg.deltaNu * t);
+        }
+        if (seg.type === 'moonSwingby') {
+            return getMoonSwingbyPoint(seg, t, mission);
+        }
+        if (seg.type === 'harmonicOrbit') {
+            const focus = mission.moonPos;
+            const angle = seg.startAngle + seg.deltaAngle * t;
+            return {
+                x: focus.x + seg.ax * Math.cos(angle) + (seg.bx || 0) * Math.cos(2 * angle),
+                y: focus.y + seg.ay * Math.sin(angle) + (seg.by || 0) * Math.sin(2 * angle)
+            };
+        }
+        if (seg.type === 'curve') {
+            return cubicBezier(seg.p0, seg.p1, seg.p2, seg.p3, u);
+        }
+        if (seg.type === 'spline') {
+            const tension = seg.tension !== undefined ? seg.tension : 0.5;
+            const pts = seg.points.map(pt => new THREE.Vector3(pt.x, pt.y, 0));
+            const curve = new THREE.CatmullRomCurve3(pts, !!seg.closed, 'catmullrom', tension);
+            const sample = curve.getPoint(u);
+            return { x: sample.x, y: sample.y };
+        }
+        if (seg.type === 'hold') {
+            return { x: seg.point.x, y: seg.point.y };
+        }
+        return { x: pos.x, y: pos.y };
+    }
+    function getSegmentDirection(seg, mission) {
+        const p0 = getSegmentPoint(seg, 0, mission);
+        const p1 = getSegmentPoint(seg, 0.02, mission);
+        return new THREE.Vector3(p1.x - p0.x, p1.y - p0.y, 0);
+    }
+    function getSegmentEndDirection(seg, mission) {
+        const p0 = getSegmentPoint(seg, 0.98, mission);
+        const p1 = getSegmentPoint(seg, 1, mission);
+        return new THREE.Vector3(p1.x - p0.x, p1.y - p0.y, 0);
+    }
+    function pointDistance(a, b) {
+        return Math.hypot(a.x - b.x, a.y - b.y);
+    }
+    function normalizeAngle(angle) {
+        while (angle <= -Math.PI) angle += Math.PI * 2;
+        while (angle > Math.PI) angle -= Math.PI * 2;
+        return angle;
+    }
+    function normalizeVec2(v) {
+        const len = Math.hypot(v.x, v.y);
+        if (len < 1e-8) return { x: 0, y: 0 };
+        return { x: v.x / len, y: v.y / len };
+    }
+    function dot2(a, b) {
+        return a.x * b.x + a.y * b.y;
+    }
+    const EARTH_ENCOUNTER_RADIUS = R_EARTH_COL * 1.08;
+    function snapPointToCircle(point, radius, fallbackAngle = Math.PI) {
+        const len = Math.hypot(point.x, point.y);
+        if (len < 1e-8) return { x: radius * Math.cos(fallbackAngle), y: radius * Math.sin(fallbackAngle) };
+        return { x: (point.x / len) * radius, y: (point.y / len) * radius };
+    }
+    function getSegmentGuidePointNearEnd(seg) {
+        if (seg.type === 'curve') return seg.p2 || seg.p1 || seg.p0;
+        if (seg.type === 'spline' && seg.points && seg.points.length >= 2) return seg.points[seg.points.length - 2];
+        if (seg.type === 'hold' && seg.point) return seg.point;
+        return null;
+    }
+    function setSegmentEndPoint(seg, point) {
+        if (seg.type === 'curve') {
+            seg.p3 = { x: point.x, y: point.y };
+        } else if (seg.type === 'spline' && seg.points && seg.points.length) {
+            seg.points[seg.points.length - 1] = { x: point.x, y: point.y };
+        } else if (seg.type === 'hold' && seg.point) {
+            seg.point = { x: point.x, y: point.y };
+        }
+    }
+    function applyMissionEndpointPolicies(mission) {
+        mission.steps.forEach((step, index) => {
+            if (step.endPolicy !== 'earth_return') return;
+            const guidePoint = getSegmentGuidePointNearEnd(step) || getSegmentPoint(step, 0.9, mission) || getSegmentPoint(step, 0, mission);
+            const fallbackAngle = (guidePoint && Math.hypot(guidePoint.x, guidePoint.y) > 1e-6) ? Math.atan2(guidePoint.y, guidePoint.x) : Math.PI;
+            const encounterPoint = snapPointToCircle(guidePoint || { x: -1, y: 0 }, EARTH_ENCOUNTER_RADIUS, fallbackAngle);
+            setSegmentEndPoint(step, encounterPoint);
+            if (index === mission.steps.length - 1) {
+                step.completionText = step.completionText || 'Earth encounter reached';
+                step.completionColor = step.completionColor || '#1e3a8a';
+            }
+        });
+    }
+    function reverseSegment(seg) {
+        if (seg.type === 'earthOrbit' || seg.type === 'moonOrbit' || seg.type === 'harmonicOrbit') {
+            seg.startAngle += seg.deltaAngle;
+            seg.deltaAngle *= -1;
+            return seg;
+        }
+        if (seg.type === 'earthConic' || seg.type === 'moonConic') {
+            seg.startNu += seg.deltaNu;
+            seg.deltaNu *= -1;
+            return seg;
+        }
+        if (seg.type === 'moonSwingby') {
+            seg.startAngle += seg.deltaAngle;
+            seg.deltaAngle *= -1;
+            const oldStart = seg.rStart;
+            seg.rStart = seg.rEnd;
+            seg.rEnd = oldStart;
+            return seg;
+        }
+        if (seg.type === 'earthSpiral') {
+            seg.startAngle += seg.deltaAngle;
+            seg.deltaAngle *= -1;
+            const oldR0 = seg.r0;
+            seg.r0 = seg.r1;
+            seg.r1 = oldR0;
+            if (seg.ry0 !== undefined || seg.ry1 !== undefined) {
+                const oldRy0 = seg.ry0 !== undefined ? seg.ry0 : seg.r0;
+                const oldRy1 = seg.ry1 !== undefined ? seg.ry1 : seg.r1;
+                seg.ry0 = oldRy1;
+                seg.ry1 = oldRy0;
+            }
+            return seg;
+        }
+        if (seg.type === 'curve') {
+            const p0 = seg.p0;
+            const p1 = seg.p1;
+            seg.p0 = seg.p3;
+            seg.p1 = seg.p2;
+            seg.p2 = p1;
+            seg.p3 = p0;
+            return seg;
+        }
+        if (seg.type === 'spline') {
+            seg.points = [...seg.points].reverse();
+            return seg;
+        }
+        return seg;
+    }
+    function anchorSegmentStart(seg, point) {
+        if (seg.type === 'curve') {
+            const dx = point.x - seg.p0.x;
+            const dy = point.y - seg.p0.y;
+            seg.p0 = { x: point.x, y: point.y };
+            seg.p1 = { x: seg.p1.x + dx, y: seg.p1.y + dy };
+            seg.p2 = { x: seg.p2.x + dx, y: seg.p2.y + dy };
+            seg.p3 = { x: seg.p3.x + dx, y: seg.p3.y + dy };
+        } else if (seg.type === 'spline' && seg.points && seg.points.length) {
+            const dx = point.x - seg.points[0].x;
+            const dy = point.y - seg.points[0].y;
+            seg.points = seg.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }));
+        } else if (seg.type === 'hold' && seg.point) {
+            seg.point = { x: point.x, y: point.y };
+        }
+    }
+    function alignCurveLikeStart(seg, startPoint, incomingDir) {
+        anchorSegmentStart(seg, startPoint);
+        const dir = normalizeVec2(incomingDir);
+        if (seg.type === 'curve') {
+            if (seg.startTangentMode === 'preserve') {
+                return;
+            }
+            const handleLen = Math.max(2.5, pointDistance(seg.p0, seg.p1));
+            seg.p1 = { x: seg.p0.x + dir.x * handleLen, y: seg.p0.y + dir.y * handleLen };
+        } else if (seg.type === 'spline' && seg.points && seg.points.length > 1) {
+            const handleLen = Math.max(2.5, pointDistance(seg.points[0], seg.points[1]));
+            const existingDir = normalizeVec2({ x: seg.points[1].x - seg.points[0].x, y: seg.points[1].y - seg.points[0].y });
+            const tangentAgreement = dot2(existingDir, dir);
+            if (seg.startTangentMode === 'preserve' || tangentAgreement < 0.2) {
+                return;
+            }
+            const blend = seg.startTangentBlend !== undefined ? seg.startTangentBlend : 0.35;
+            const blendedDir = normalizeVec2({
+                x: existingDir.x * (1 - blend) + dir.x * blend,
+                y: existingDir.y * (1 - blend) + dir.y * blend
+            });
+            seg.points[1] = { x: seg.points[0].x + blendedDir.x * handleLen, y: seg.points[0].y + blendedDir.y * handleLen };
+        }
+    }
+    function chooseSignedMagnitude(baseMag, startSetter, directionGetter, incomingDir) {
+        const mag = Math.abs(baseMag);
+        const candidates = [mag, -mag];
+        let best = candidates[0];
+        let bestScore = -Infinity;
+        candidates.forEach(candidate => {
+            startSetter(candidate);
+            const dir = normalizeVec2(directionGetter());
+            const score = dot2(dir, incomingDir);
+            if (score > bestScore) {
+                bestScore = score;
+                best = candidate;
+            }
+        });
+        startSetter(best);
+    }
+    function alignSegmentToPrevious(prev, cur, mission) {
+        const prevEnd = getSegmentPoint(prev, 1, mission);
+        const prevDir = normalizeVec2(getSegmentEndDirection(prev, mission));
+        if (cur.type === 'curve' || cur.type === 'spline') {
+            const curStart = getSegmentPoint(cur, 0, mission);
+            const curEnd = getSegmentPoint(cur, 1, mission);
+            if (pointDistance(prevEnd, curEnd) + 0.5 < pointDistance(prevEnd, curStart)) {
+                reverseSegment(cur);
+            }
+            alignCurveLikeStart(cur, prevEnd, prevDir);
+            return;
+        }
+        if (cur.type === 'hold') {
+            anchorSegmentStart(cur, prevEnd);
+            return;
+        }
+        if (cur.type === 'earthOrbit' || cur.type === 'moonOrbit' || cur.type === 'earthSpiral') {
+            const center = (cur.type === 'moonOrbit') ? mission.moonPos : v2(0, 0);
+            const rx = cur.type === 'earthSpiral' ? cur.r0 : cur.rx;
+            const ry = cur.type === 'earthSpiral' ? (cur.ry0 !== undefined ? cur.ry0 : cur.r0) : (cur.ry || cur.rx);
+            const angle = Math.atan2((prevEnd.y - center.y) / Math.max(ry, 0.001), (prevEnd.x - center.x) / Math.max(rx, 0.001));
+            cur.startAngle = angle;
+            chooseSignedMagnitude(cur.deltaAngle, candidate => { cur.deltaAngle = candidate; }, () => getSegmentDirection(cur, mission), prevDir);
+            const alignedStart = getSegmentPoint(cur, 0, mission);
+            const currentRadius = Math.hypot(alignedStart.x - center.x, alignedStart.y - center.y);
+            const targetRadius = Math.hypot(prevEnd.x - center.x, prevEnd.y - center.y);
+            if (currentRadius > 0.001 && targetRadius > 0.001) {
+                const scale = targetRadius / currentRadius;
+                if (cur.type === 'earthSpiral') {
+                    cur.r0 *= scale;
+                    cur.r1 *= scale;
+                    if (cur.ry0 !== undefined) cur.ry0 *= scale;
+                    if (cur.ry1 !== undefined) cur.ry1 *= scale;
+                } else {
+                    cur.rx *= scale;
+                    if (cur.ry !== undefined) cur.ry *= scale;
+                }
+            }
+            return;
+        }
+        if (cur.type === 'moonSwingby') {
+            const center = mission.moonPos;
+            const rel = { x: prevEnd.x - center.x, y: prevEnd.y - center.y };
+            cur.startAngle = Math.atan2(rel.y, rel.x);
+            chooseSignedMagnitude(cur.deltaAngle, candidate => { cur.deltaAngle = candidate; }, () => getSegmentDirection(cur, mission), prevDir);
+            const alignedStart = getSegmentPoint(cur, 0, mission);
+            const currentRadius = Math.hypot(alignedStart.x - center.x, alignedStart.y - center.y);
+            const targetRadius = Math.hypot(prevEnd.x - center.x, prevEnd.y - center.y);
+            if (currentRadius > 0.001 && targetRadius > 0.001) {
+                const scale = targetRadius / currentRadius;
+                cur.rStart *= scale;
+                cur.rPeri *= scale;
+                cur.rEnd *= scale;
+            }
+            return;
+        }
+        if (cur.type === 'harmonicOrbit') {
+            let bestAngle = cur.startAngle || 0;
+            let bestDist = Infinity;
+            for (let i = 0; i <= 720; i++) {
+                const angle = (i / 720) * Math.PI * 2;
+                cur.startAngle = angle;
+                const pt = getSegmentPoint(cur, 0, mission);
+                const dist = pointDistance(pt, prevEnd);
+                if (dist < bestDist) {
+                    bestDist = dist;
+                    bestAngle = angle;
+                }
+            }
+            cur.startAngle = bestAngle;
+            chooseSignedMagnitude(cur.deltaAngle, candidate => { cur.deltaAngle = candidate; }, () => getSegmentDirection(cur, mission), prevDir);
+            const alignedStart = getSegmentPoint(cur, 0, mission);
+            const currentRadius = Math.hypot(alignedStart.x - mission.moonPos.x, alignedStart.y - mission.moonPos.y);
+            const targetRadius = Math.hypot(prevEnd.x - mission.moonPos.x, prevEnd.y - mission.moonPos.y);
+            if (currentRadius > 0.001 && targetRadius > 0.001) {
+                const scale = targetRadius / currentRadius;
+                cur.ax *= scale;
+                cur.ay *= scale;
+                if (cur.bx !== undefined) cur.bx *= scale;
+                if (cur.by !== undefined) cur.by *= scale;
+            }
+            return;
+        }
+        if (cur.type === 'earthConic' || cur.type === 'moonConic') {
+            const focus = cur.type === 'moonConic' ? mission.moonPos : v2(0, 0);
+            const rel = { x: prevEnd.x - focus.x, y: prevEnd.y - focus.y };
+            const theta = normalizeAngle(Math.atan2(rel.y, rel.x) - cur.periapsisAngle);
+            cur.startNu = theta;
+            chooseSignedMagnitude(cur.deltaNu, candidate => { cur.deltaNu = candidate; }, () => getSegmentDirection(cur, mission), prevDir);
+            const alignedStart = getSegmentPoint(cur, 0, mission);
+            const currentRadius = Math.hypot(alignedStart.x - focus.x, alignedStart.y - focus.y);
+            const targetRadius = Math.hypot(prevEnd.x - focus.x, prevEnd.y - focus.y);
+            if (currentRadius > 0.001 && targetRadius > 0.001) {
+                const scale = targetRadius / currentRadius;
+                cur.rp *= scale;
+                cur.ra *= scale;
+            }
+            return;
+        }
+    }
+    function getMissionYear(mission) {
+        const m = (mission.title || '').match(/\((\d{4})\)/);
+        return m ? parseInt(m[1], 10) : 9999;
+    }
+    function cloneMissionSource(source) {
+        return JSON.parse(JSON.stringify(source));
+    }
+    function prepareMissionContinuity(source) {
+        const mission = cloneMissionSource(source);
+        mission.key = source.key;
+        for (let i = 1; i < mission.steps.length; i++) {
+            alignSegmentToPrevious(mission.steps[i - 1], mission.steps[i], mission);
+        }
+        applyMissionEndpointPolicies(mission);
+        return mission;
+    }
+    function resetScriptedTrail() {
+        trail = [];
+        trailGeo.setFromPoints([]);
+        trailDistTracker = 0;
+    }
+    function parkMissionSpacecraft() {
+        pos.set(0, 0, 0);
+        vel.set(0, 0, 0);
+        prevR = 0;
+        prevRDot = 0;
+        maxAltSinceLaunch = 0;
+        resetScriptedTrail();
+        updateSurfaces();
+    }
+    function updateMissionButtonHighlights() {
+        document.querySelectorAll('#mission-button-list .mission-btn').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.missionId === selectedMissionId);
+        });
+    }
+    function updateMissionActionButtonStyles(mode) {
+        const loadBtn = document.getElementById('btn-mission-load');
+        const nextBtn = document.getElementById('btn-mission-next');
+        loadBtn.classList.remove('secondary');
+        nextBtn.classList.remove('primary-next');
+        if (mode === 'progress') {
+            loadBtn.classList.add('secondary');
+            nextBtn.classList.add('primary-next');
+        }
+    }
+
+    let selectedMissionId = null;
+    const HISTORICAL_LOW_EARTH_RADIUS = 5.4;
+    const HISTORICAL_MILD_ELLIPTICAL_LEO_APOGEE = 6.6;
+    const HISTORICAL_APOLLO_LOI_PERILUNE = 4.5;
+    const HISTORICAL_APOLLO_LOI_APOLUNE = 7.0;
+    const HISTORICAL_APOLLO_LOW_LUNAR_ORBIT = 4.6;
+    const HISTORICAL_LUNA10_PERILUNE = 5.1;
+    const HISTORICAL_LUNA10_APOLUNE = 6.9;
+    const HISTORICAL_LRO_CAPTURE_PERILUNE = 4.7;
+    const HISTORICAL_LRO_CAPTURE_APOLUNE = 9.2;
+    const HISTORICAL_LRO_LOWERED_APOLUNE = 6.2;
+    const HISTORICAL_LRO_LOW_ORBIT = 4.8;
+    const HISTORICAL_SMART1_CAPTURE_PERILUNE = 6.8;
+    const HISTORICAL_SMART1_CAPTURE_APOLUNE = 17.5;
+    const HISTORICAL_SMART1_SHAPED_ORBIT = 8.0;
+    const missionCatalog = {
+        apollo8: {
+            title: 'Apollo 8 (1968)',
+            buttonTitle: 'Apollo 8 (1968)',
+            color: '#1d4ed8',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put Apollo 8 into low Earth parking orbit',
+            overviewHtml: `<b>Apollo 8 (1968)</b><br><b>Mission:</b> First crewed mission to leave Earth orbit, travel to the Moon, enter lunar orbit, and return safely to Earth.<br><br><b>Orbit family shown here:</b> Low Earth parking orbit → direct translunar transfer → elliptical lunar capture orbit → low lunar orbit → trans-Earth return.<br><br><b>Why this route?</b> Apollo 8 was a fast crewed lunar-orbit mission. It needed a strong prograde departure from Earth, retrograde braking at the Moon, and then a later prograde burn in lunar orbit to come home.`,
+            steps: [
+                { title: 'Low Earth parking orbit', buttonLabel: 'Show low Earth parking orbit', burnType: 'No new in-space burn shown here; this is the post-launch parking orbit.', explain: 'Apollo 8 first coasted in low Earth parking orbit while the crew and ground teams checked the spacecraft before departure for the Moon.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_LOW_EARTH_RADIUS, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 4.0, primary: 'earth', statusText: 'Low Earth Parking Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Trans-lunar injection (TLI)', buttonLabel: 'Show trans-lunar injection (TLI)', burnType: 'Prograde burn at Earth perigee, on the side of Earth opposite the Moon.', explain: 'This is the classic Apollo departure burn. The burn is shown at Earth perigee on the side opposite the Moon, so the transfer sweeps out a broad Earth-centred ellipse toward lunar distance.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 55.5, periapsisAngle: Math.PI, startNu: 0, deltaNu: -Math.PI, duration: 7.6, primary: 'earth', statusText: 'Trans-lunar Injection (TLI)', statusColor: '#8b5cf6', burn: 2.15, burnLabel: 'Apollo 8: Trans-lunar injection (TLI)', burnExplain: 'Prograde burn at Earth perigee to leave low Earth orbit for a direct transfer to the Moon.', speed: 1.3 },
+                { title: 'Lunar orbit insertion (LOI)', buttonLabel: 'Show lunar orbit insertion (LOI)', burnType: 'Retrograde burn at lunar perilune.', explain: 'At lunar perilune, Apollo 8 had to slow down. That retrograde burn removed enough energy for the Moon to capture the spacecraft into an elliptical orbit.', type: 'moonConic', rp: HISTORICAL_APOLLO_LOI_PERILUNE, ra: HISTORICAL_APOLLO_LOI_APOLUNE, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 7.8, primary: 'moon', statusText: 'Elliptical Lunar Capture Orbit', statusColor: '#d97706', burn: -0.7, burnLabel: 'Apollo 8: Lunar orbit insertion (LOI)', burnExplain: 'Retrograde burn at lunar perilune to convert the flyby into a captured lunar orbit.', speed: 1.0 },
+                { title: 'Low lunar orbit trim', buttonLabel: 'Show low lunar orbit trim', burnType: 'Smaller retrograde circularisation burn at lunar perilune, lowering apolune into low lunar orbit.', explain: 'Apollo 8 then trimmed the initial capture orbit down toward the much lower lunar orbit used for observations and navigation practice.', type: 'moonConic', rp: HISTORICAL_APOLLO_LOI_PERILUNE, ra: HISTORICAL_APOLLO_LOW_LUNAR_ORBIT, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 6.5, primary: 'moon', statusText: 'Low Lunar Orbit', statusColor: '#0f766e', burn: -0.12, burnLabel: 'Apollo 8: Low-lunar-orbit trim', burnExplain: 'Smaller retrograde trim burn to reduce apolune and settle into low lunar orbit.', speed: 0.9 },
+                { title: 'Trans-Earth injection (TEI)', buttonLabel: 'Show trans-Earth injection (TEI)', burnType: 'Prograde burn in lunar orbit, made near lunar perilune.', explain: 'Apollo 8 then sped up in the direction of travel while in lunar orbit. That prograde burn raised apolune until the spacecraft escaped the Moon and headed back to Earth for re-entry.', type: 'curve', p0: v2(52, 0), p1: v2(44, -9), p2: v2(14, -18), p3: v2(-15, 0), duration: 8.2, primary: 'earth', endPolicy: 'earth_return', statusText: 'Trans-Earth Injection (TEI)', statusColor: '#1e3a8a', burn: 0.72, burnLabel: 'Apollo 8: Trans-Earth injection (TEI)', burnExplain: 'Prograde burn in lunar orbit to leave the Moon and target Earth return.', speed: 1.25 }
+            ]
+        },
+        apollo11: {
+            title: 'Apollo 11 (1969)',
+            buttonTitle: 'Apollo 11 (1969)',
+            color: '#047857',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put Apollo 11 into low Earth parking orbit',
+            overviewHtml: `<b>Apollo 11 (1969)</b><br><b>Mission:</b> First crewed lunar landing mission.<br><br><b>Orbit family shown here:</b> Low Earth parking orbit → direct translunar transfer → lunar capture orbit → low lunar orbit for landing support → trans-Earth return.<br><br><b>Why this route?</b> Apollo 11 needed the same fast Earth-to-Moon transfer as Apollo 8, but it also needed a stable lunar orbit to support descent, rendezvous, and return.`,
+            steps: [
+                { title: 'Low Earth parking orbit', buttonLabel: 'Show low Earth parking orbit', burnType: 'No new in-space burn shown here; this is the post-launch parking orbit.', explain: 'Apollo 11 first coasted in low Earth parking orbit before the departure burn that sent the crew toward the Moon.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_LOW_EARTH_RADIUS, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 4.0, primary: 'earth', statusText: 'Low Earth Parking Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Trans-lunar injection (TLI)', buttonLabel: 'Show trans-lunar injection (TLI)', burnType: 'Prograde burn at Earth perigee, on the side of Earth opposite the Moon.', explain: 'This burn is shown at Earth perigee on the side opposite the Moon. It raises apogee from low Earth orbit to lunar distance and starts Apollo 11 on a broad translunar transfer ellipse.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 55.5, periapsisAngle: Math.PI, startNu: 0, deltaNu: -Math.PI, duration: 7.6, primary: 'earth', statusText: 'Trans-lunar Injection (TLI)', statusColor: '#8b5cf6', burn: 2.15, burnLabel: 'Apollo 11: Trans-lunar injection (TLI)', burnExplain: 'Prograde burn at Earth perigee to send Apollo 11 from low Earth orbit toward the Moon.', speed: 1.3 },
+                { title: 'Lunar orbit insertion (LOI)', buttonLabel: 'Show lunar orbit insertion (LOI)', burnType: 'Retrograde burn at lunar perilune.', explain: 'Apollo 11 had to brake at lunar perilune so the Moon would capture it instead of letting it fly straight past.', type: 'moonConic', rp: HISTORICAL_APOLLO_LOI_PERILUNE, ra: HISTORICAL_APOLLO_LOI_APOLUNE, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 7.6, primary: 'moon', statusText: 'Elliptical Lunar Capture Orbit', statusColor: '#d97706', burn: -0.7, burnLabel: 'Apollo 11: Lunar orbit insertion (LOI)', burnExplain: 'Retrograde burn at lunar perilune to enter an elliptical lunar orbit.', speed: 1.0 },
+                { title: 'Low lunar orbit for landing support', buttonLabel: 'Show low lunar orbit for landing support', burnType: 'Smaller retrograde circularisation burn at lunar perilune, lowering apolune into low lunar orbit.', explain: 'Apollo 11 then trimmed into a much lower lunar orbit. From this orbit the Lunar Module departed for the landing while the Command Module remained in orbit.', type: 'moonConic', rp: HISTORICAL_APOLLO_LOI_PERILUNE, ra: HISTORICAL_APOLLO_LOW_LUNAR_ORBIT, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 6.3, primary: 'moon', statusText: 'Low Lunar Orbit', statusColor: '#0f766e', burn: -0.12, burnLabel: 'Apollo 11: Low-lunar-orbit trim', burnExplain: 'Smaller retrograde trim burn to establish the lower orbit used for the landing mission profile.', speed: 0.9 },
+                { title: 'Landing branch and rendezvous period', buttonLabel: 'Show landing-branch support period', burnType: 'No new main orbital burn shown here; this step represents the time when the Lunar Module descended and later rendezvoused again.', explain: 'Only Apollo 11 in this set actually landed. This stage keeps the Command Module in lunar orbit while the landing branch happens below.', type: 'moonConic', rp: HISTORICAL_APOLLO_LOI_PERILUNE, ra: HISTORICAL_APOLLO_LOW_LUNAR_ORBIT, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 4.8, primary: 'moon', statusText: 'Landing Support in Lunar Orbit', statusColor: '#b45309', speed: 0.8 },
+                { title: 'Trans-Earth injection (TEI)', buttonLabel: 'Show trans-Earth injection (TEI)', burnType: 'Prograde burn in lunar orbit, made near lunar perilune.', explain: 'To come home, Apollo 11 sped up in the direction of travel while in lunar orbit. That prograde burn raised apolune until the spacecraft escaped the Moon and headed back to Earth.', type: 'curve', p0: v2(52, 0), p1: v2(44, -9), p2: v2(14, -18), p3: v2(-15, 0), duration: 8.0, primary: 'earth', endPolicy: 'earth_return', statusText: 'Trans-Earth Injection (TEI)', statusColor: '#1e3a8a', burn: 0.72, burnLabel: 'Apollo 11: Trans-Earth injection (TEI)', burnExplain: 'Prograde burn in lunar orbit to leave the Moon and target Earth return.', speed: 1.25 }
+            ]
+        },
+        luna3: {
+            title: 'Luna 3 (1959)',
+            buttonTitle: 'Luna 3 (1959)',
+            color: '#b91c1c',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put Luna 3 into Earth departure orbit',
+            overviewHtml: `<b>Luna 3 (1959)</b><br><b>Mission:</b> First mission to photograph the Moon's far side.<br><br><b>Orbit family shown here:</b> Earth departure orbit → lunar flyby → free-return style path back toward Earth.<br><br><b>Why this route?</b> Luna 3 was not trying to stay at the Moon. It needed enough energy to reach the far side, swing round it, and then head home with its images.`,
+            steps: [
+                { title: 'Earth departure orbit set-up', buttonLabel: 'Show Earth departure orbit', burnType: 'No separate lunar-capture burn is planned in this mission; this is the Earth-orbit set-up before departure.', explain: 'This stage simply places Luna 3 into its starting Earth orbit for the outbound leg.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_LOW_EARTH_RADIUS, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 3.8, primary: 'earth', statusText: 'Earth Departure Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Earth departure burn', buttonLabel: 'Show Earth departure burn', burnType: 'Prograde burn at Earth perigee, on the side of Earth opposite the Moon.', explain: 'Luna 3 departs Earth from perigee on the side opposite the Moon. The prograde burn stretches the Earth-centred ellipse out to lunar distance, but without a planned capture burn at the Moon.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 55.2, periapsisAngle: Math.PI, startNu: 0, deltaNu: -Math.PI, duration: 7.3, primary: 'earth', statusText: 'Outbound Lunar Flyby Trajectory', statusColor: '#8b5cf6', burn: 2.05, burnLabel: 'Luna 3: Earth departure burn', burnExplain: 'Prograde burn at Earth perigee to send Luna 3 toward a lunar flyby, not a lunar orbit.', speed: 1.25 },
+                { title: 'Lunar flyby', buttonLabel: 'Show lunar flyby', burnType: 'No lunar orbit insertion burn. The Moon bends the trajectory by gravity alone.', explain: "Instead of braking into orbit, Luna 3 swings smoothly around the Moon's far side so gravity alone redirects the spacecraft back toward Earth.", type: 'moonSwingby', rStart: 8.0, rPeri: 6.1, rEnd: 18.0, startAngle: Math.PI, deltaAngle: -1.18 * Math.PI, duration: 5.1, primary: 'moon', statusText: 'Lunar Flyby', statusColor: '#d97706', speed: 1.0 },
+                { title: 'Free return to Earth', buttonLabel: 'Show free return to Earth', burnType: 'No major lunar burn; this is the return coast after the flyby.', explain: 'After the far-side swing-by, Luna 3 should keep the outward flyby bend for a while, then arc gradually back inward toward Earth rather than snapping straight home.', type: 'curve', p0: v2(74, -10), p1: v2(80, -3), p2: v2(24, -20), p3: v2(-15, 0), duration: 8.0, primary: 'earth', endPolicy: 'earth_return', statusText: 'Return Toward Earth', statusColor: '#1e3a8a', speed: 1.2 }
+            ]
+        },
+        luna10: {
+            title: 'Luna 10 (1966)',
+            buttonTitle: 'Luna 10 (1966)',
+            color: '#7c3aed',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put Luna 10 into Earth departure orbit',
+            overviewHtml: `<b>Luna 10 (1966)</b><br><b>Mission:</b> First spacecraft to orbit the Moon.<br><br><b>Orbit family shown here:</b> Earth departure orbit → direct translunar transfer → lunar capture orbit.<br><br><b>Why this route?</b> Unlike Luna 3, Luna 10 was designed to stay at the Moon. That meant it needed a retrograde braking burn at lunar perilune.`,
+            steps: [
+                { title: 'Earth departure orbit set-up', buttonLabel: 'Show Earth departure orbit', burnType: 'No new in-space burn shown here; this is the starting Earth orbit for the translunar departure.', explain: 'Luna 10 begins in its Earth departure orbit before the main burn to the Moon.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_LOW_EARTH_RADIUS, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 3.8, primary: 'earth', statusText: 'Earth Departure Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Direct translunar departure', buttonLabel: 'Show direct translunar departure', burnType: 'Prograde burn at Earth perigee, on the side of Earth opposite the Moon.', explain: 'This burn is shown at Earth perigee on the far side of Earth from the Moon, producing a broad transfer ellipse that reaches lunar distance instead of a mere flyby path.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 54.9, periapsisAngle: Math.PI, startNu: 0, deltaNu: -Math.PI, duration: 7.3, primary: 'earth', statusText: 'Direct Translunar Transfer', statusColor: '#8b5cf6', burn: 2.08, burnLabel: 'Luna 10: Direct translunar departure', burnExplain: 'Prograde Earth-departure burn to reach the Moon as an orbiter, not just as a flyby mission.', speed: 1.2 },
+                { title: 'Lunar orbit insertion (LOI)', buttonLabel: 'Show lunar orbit insertion (LOI)', burnType: 'Retrograde burn at lunar perilune.', explain: 'At the Moon, Luna 10 slows down at perilune so that the lunar gravity field captures it into a moderate elliptical orbit, not a very high one.', type: 'moonConic', rp: HISTORICAL_LUNA10_PERILUNE, ra: HISTORICAL_LUNA10_APOLUNE, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 7.4, primary: 'moon', statusText: 'Elliptical Lunar Orbit', statusColor: '#d97706', burn: -0.55, burnLabel: 'Luna 10: Lunar orbit insertion (LOI)', burnExplain: 'Retrograde burn at lunar perilune to become the first lunar orbiter.', speed: 1.0 },
+                { title: 'Orbital science passes', buttonLabel: 'Show lunar orbital science passes', burnType: 'No further major burn shown here; this is the orbital mission phase.', explain: 'Once captured, Luna 10 completes repeated passes around the Moon and begins orbital science operations.', type: 'moonConic', rp: HISTORICAL_LUNA10_PERILUNE, ra: 6.3, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 6.0, primary: 'moon', statusText: 'Operational Lunar Orbit', statusColor: '#0f766e', speed: 0.85 }
+            ]
+        },
+        lro: {
+            title: 'LRO (2009)',
+            buttonTitle: 'LRO (2009)',
+            color: '#0ea5e9',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put LRO into low Earth parking orbit',
+            overviewHtml: `<b>Lunar Reconnaissance Orbiter (LRO) (2009)</b><br><b>Mission:</b> Robotic orbiter sent to map the Moon in detail and support future landing-site selection.<br><br><b>Orbit family shown here:</b> Low Earth parking orbit → direct translunar transfer → initial high elliptical lunar orbit → orbit-lowering burns → low mapping orbit.<br><br><b>Why this route?</b> Orbiter missions often capture into a higher lunar orbit first and then trim down step by step into their science orbit.`,
+            steps: [
+                { title: 'Low Earth parking orbit', buttonLabel: 'Show low Earth parking orbit', burnType: 'No new in-space burn shown here; this is the post-launch parking orbit.', explain: 'LRO begins with the familiar low Earth parking orbit before the direct departure toward the Moon.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_LOW_EARTH_RADIUS, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 3.8, primary: 'earth', statusText: 'Low Earth Parking Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Direct translunar injection', buttonLabel: 'Show direct translunar injection', burnType: 'Prograde burn at Earth perigee, on the side of Earth opposite the Moon.', explain: 'The Earth departure burn is shown at perigee on the side of Earth opposite the Moon, giving LRO the broad transfer ellipse used for a direct robotic lunar transfer.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 55.3, periapsisAngle: Math.PI, startNu: 0, deltaNu: -Math.PI, duration: 7.0, primary: 'earth', statusText: 'Direct Transfer to the Moon', statusColor: '#8b5cf6', burn: 2.1, burnLabel: 'LRO: Direct translunar injection', burnExplain: 'Prograde burn at Earth perigee for a direct robotic transfer from Earth parking orbit to the Moon.', speed: 1.25 },
+                { title: 'Initial lunar orbit insertion (LOI)', buttonLabel: 'Show initial lunar orbit insertion (LOI)', burnType: 'Retrograde burn at lunar perilune.', explain: 'LRO first captures into a larger elliptical lunar orbit rather than diving straight into the final low science orbit.', type: 'moonConic', rp: HISTORICAL_LRO_CAPTURE_PERILUNE, ra: HISTORICAL_LRO_CAPTURE_APOLUNE, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 7.2, primary: 'moon', statusText: 'Initial Elliptical Lunar Orbit', statusColor: '#d97706', burn: -0.52, burnLabel: 'LRO: Initial lunar orbit insertion (LOI)', burnExplain: 'Retrograde burn at lunar perilune to secure capture into a high elliptical lunar orbit.', speed: 1.0 },
+                { title: 'Orbit-lowering burns', buttonLabel: 'Show orbit-lowering burns', burnType: 'Additional retrograde burns, made repeatedly near lunar perilune, to lower apolune.', explain: 'After initial capture, LRO uses further retrograde trimming to lower the high side of the orbit and bring the spacecraft down toward its mapping altitude.', type: 'moonConic', rp: HISTORICAL_LRO_CAPTURE_PERILUNE, ra: HISTORICAL_LRO_LOWERED_APOLUNE, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 6.2, primary: 'moon', statusText: 'Orbit Lowering Around the Moon', statusColor: '#0284c7', burn: -0.18, burnLabel: 'LRO: Orbit-lowering trim burns', burnExplain: 'Further retrograde braking near lunar perilune lowers apolune and shapes the mapping orbit.', speed: 0.9 },
+                { title: 'Low mapping orbit', buttonLabel: 'Show low mapping orbit', burnType: 'Final trimmed operational orbit.', explain: 'This is the much lower mapping-class lunar orbit from which LRO carries out its long-running reconnaissance mission.', type: 'moonConic', rp: HISTORICAL_LRO_CAPTURE_PERILUNE, ra: HISTORICAL_LRO_LOW_ORBIT, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 5.8, primary: 'moon', statusText: 'Low Mapping Orbit', statusColor: '#0f766e', speed: 0.85 }
+            ]
+        },
+        smart1: {
+            title: 'SMART-1 (2003)',
+            buttonTitle: 'SMART-1 (2003)',
+            color: '#f59e0b',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put SMART-1 into starting Earth orbit',
+            overviewHtml: `<b>SMART-1 (2003)</b><br><b>Mission:</b> European mission to demonstrate solar-electric propulsion and then orbit the Moon.<br><br><b>Orbit family shown here:</b> Starting Earth orbit → repeated low-thrust apogee-raising spirals → low-energy lunar approach → gentle lunar capture → continued orbit shaping.<br><br><b>Why this route?</b> SMART-1 traded time for propellant efficiency. Instead of one huge departure burn, it used many tiny prograde thrust arcs over many Earth orbits.`,
+            steps: [
+                { title: 'Starting Earth orbit', buttonLabel: 'Show starting Earth orbit', burnType: 'No major deep-space burn shown yet; this is the initial orbit after launch.', explain: 'SMART-1 starts in Earth orbit before the long sequence of low-thrust electric-propulsion manoeuvres begins.', type: 'earthOrbit', rx: HISTORICAL_LOW_EARTH_RADIUS, ry: HISTORICAL_LOW_EARTH_RADIUS, startAngle: Math.PI, deltaAngle: -2 * Math.PI, duration: 3.5, primary: 'earth', statusText: 'Starting Earth Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Early low-thrust apogee-raising spiral', buttonLabel: 'Show early low-thrust spiral', burnType: 'Many small prograde thrust arcs, mostly used near Earth perigee over repeated revolutions.', explain: 'Instead of one Trans-lunar injection burn, SMART-1 gradually raises apogee by thrusting gently over and over again.', type: 'earthSpiral', r0: HISTORICAL_LOW_EARTH_RADIUS, r1: 20, startAngle: Math.PI, deltaAngle: -4 * Math.PI, duration: 8.2, primary: 'earth', statusText: 'Electric-Propulsion Spiral', statusColor: '#ca8a04', burn: 0.28, burnLabel: 'SMART-1: Repeated low-thrust apogee-raising burns', burnExplain: 'Many small prograde thrust arcs gradually raise apogee instead of using one big Earth-departure burn.', speed: 1.1 },
+                { title: 'Later low-thrust spiral to escape Earth', buttonLabel: 'Show later low-thrust spiral', burnType: 'Continued small prograde thrust arcs over many more Earth orbits.', explain: 'The same idea continues: the orbit keeps growing until SMART-1 can drift onto a much slower, more fuel-efficient lunar approach.', type: 'earthSpiral', r0: 20, r1: 42, startAngle: Math.PI, deltaAngle: -5 * Math.PI, duration: 8.6, primary: 'earth', statusText: 'Outward Spiral Continues', statusColor: '#a16207', burn: 0.22, burnLabel: 'SMART-1: Continued low-thrust spiral', burnExplain: 'Further gentle electric-propulsion thrust keeps raising apogee and slowly lets SMART-1 escape Earth.', speed: 1.05 },
+                { title: 'Low-energy lunar approach', buttonLabel: 'Show low-energy lunar approach', burnType: 'No single dramatic departure burn; this is the slow approach produced by the long electric-propulsion spiral.', explain: 'Because SMART-1 arrived slowly, the lunar encounter should look like a broad gentle sweep behind the Moon rather than a sharp direct shot.', type: 'moonSwingby', rStart: 18.0, rPeri: 7.2, rEnd: 12.0, startAngle: Math.PI, deltaAngle: -1.08 * Math.PI, duration: 7.6, primary: 'moon', statusText: 'Low-energy Lunar Approach', statusColor: '#8b5cf6', speed: 1.0 },
+                { title: 'Gentle lunar capture and orbit shaping', buttonLabel: 'Show gentle lunar capture', burnType: 'Small retrograde braking near lunar perilune, plus continued low-thrust shaping after capture.', explain: 'SMART-1 used a much gentler capture sequence than Apollo-era missions. After the slow far-side approach, a modest retrograde capture and continued low-thrust shaping refined the science orbit.', type: 'moonConic', rp: HISTORICAL_SMART1_CAPTURE_PERILUNE, ra: HISTORICAL_SMART1_CAPTURE_APOLUNE, periapsisAngle: Math.PI, startNu: 0, deltaNu: 1.15 * Math.PI, duration: 6.6, primary: 'moon', statusText: 'Gentle Lunar Capture', statusColor: '#d97706', burn: -0.25, burnLabel: 'SMART-1: Gentle lunar capture', burnExplain: 'Smaller retrograde braking plus continued shaping after capture, rather than a single large Apollo-style lunar orbit insertion burn.', speed: 0.95 },
+                { title: 'Final shaped science orbit', buttonLabel: 'Show final shaped science orbit', burnType: 'Continued low-thrust shaping over repeated perilune and apolune passes, rather than one sharp circularisation burn.', explain: 'The final SMART-1 science orbit was reached by continued shaping, consistent with the mission\'s slow low-thrust style.', type: 'moonConic', rp: HISTORICAL_SMART1_CAPTURE_PERILUNE, ra: HISTORICAL_SMART1_SHAPED_ORBIT, periapsisAngle: Math.PI, startNu: 0, deltaNu: 2 * Math.PI, duration: 5.8, primary: 'moon', statusText: 'Shaped Lunar Science Orbit', statusColor: '#92400e', speed: 0.85 }
+            ]
+        },
+        artemis1: {
+            title: 'Artemis I (2022)',
+            buttonTitle: 'Artemis I (2022)',
+            color: '#14b8a6',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put Artemis I into low Earth parking orbit',
+            overviewHtml: `<b>Artemis I (2022)</b><br><b>Mission:</b> First integrated flight test of Orion and the Space Launch System, sent beyond the Moon and into distant retrograde orbit.<br><br><b>Orbit family shown here:</b> Low Earth parking orbit → perigee-raise manoeuvre → Trans-lunar injection (TLI) → outbound powered lunar flyby → distant retrograde orbit (DRO) insertion → DRO departure → return powered flyby → Earth return.<br><br><b>Why this route?</b> Artemis I was not an Apollo-style short stay in low lunar orbit. It was a deeper cislunar test flight designed to enter and leave a high distant retrograde orbit.`,
+            steps: [
+                { title: 'Low Earth parking orbit', buttonLabel: 'Show low Earth parking orbit', burnType: 'No new in-space burn shown here; this is the initial Earth parking orbit after launch.', explain: 'Orion first enters low Earth parking orbit after launch before the upper stage begins the sequence of departure burns.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_LOW_EARTH_RADIUS, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 3.8, primary: 'earth', statusText: 'Low Earth Parking Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Perigee-raise manoeuvre', buttonLabel: 'Show perigee-raise manoeuvre', burnType: 'Short prograde burn at Earth perigee.', explain: 'Before the main departure, the interim cryogenic propulsion stage makes a short prograde burn near Earth perigee. That raises apogee and sets up the longer Trans-lunar injection (TLI) burn.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 26, periapsisAngle: Math.PI, startNu: 0, deltaNu: -2 * Math.PI, duration: 6.0, primary: 'earth', statusText: 'Raised Elliptical Earth Orbit', statusColor: '#2563eb', burn: 0.28, burnLabel: 'Artemis I: Perigee-raise manoeuvre', burnExplain: 'Short prograde burn at Earth perigee to raise apogee and set up the main Trans-lunar injection (TLI) burn.', speed: 1.0 },
+                { title: 'Trans-lunar injection (TLI)', buttonLabel: 'Show trans-lunar injection (TLI)', burnType: 'Long prograde burn at Earth perigee, on the side of Earth opposite the Moon.', explain: 'This is the main Earth departure burn. It is shown at Earth perigee on the far side of Earth from the Moon, so the path sweeps out a larger Earth-centred transfer ellipse toward the lunar encounter.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 52, periapsisAngle: Math.PI, startNu: 0, deltaNu: -Math.PI, duration: 7.4, primary: 'earth', statusText: 'Trans-lunar Injection (TLI)', statusColor: '#8b5cf6', burn: 2.2, burnLabel: 'Artemis I: Trans-lunar injection (TLI)', burnExplain: 'Long prograde Earth-perigee burn to leave Earth orbit and send Orion toward the Moon.', speed: 1.25 },
+                { title: 'Outbound powered flyby', buttonLabel: 'Show outbound powered flyby', burnType: 'Prograde burn at lunar perilune during the first close flyby.', explain: 'Near the Moon, Orion combines lunar gravity with a propulsive burn to redirect the path smoothly toward distant retrograde orbit rather than low lunar orbit.', type: 'moonSwingby', rStart: 8.0, rPeri: 6.0, rEnd: 27.0, startAngle: Math.PI, deltaAngle: -1.02 * Math.PI, duration: 5.8, primary: 'moon', statusText: 'Outbound Powered Flyby', statusColor: '#d97706', burn: 0.42, burnLabel: 'Artemis I: Outbound powered flyby', burnExplain: 'Burn at the first close lunar flyby to help redirect Orion toward distant retrograde orbit.', speed: 1.0 },
+                { title: 'Distant retrograde orbit (DRO) insertion', buttonLabel: 'Show distant retrograde orbit (DRO) insertion', burnType: 'Retrograde burn near the lunar close-approach side of the orbit to stabilise Orion in distant retrograde orbit around the Moon.', explain: 'This step shows Orion settled into distant retrograde orbit, the high stable cislunar orbit used for the deep-space systems test.', type: 'moonOrbit', rx: 22, ry: 13, startAngle: Math.PI / 2, deltaAngle: 2 * Math.PI, duration: 7.5, primary: 'moon', statusText: 'Distant Retrograde Orbit (DRO)', statusColor: '#0f766e', burn: -0.18, burnLabel: 'Artemis I: Distant retrograde orbit insertion', burnExplain: 'Insertion burn to settle Orion into distant retrograde orbit rather than a low Apollo-style lunar orbit.', speed: 0.9 },
+                { title: 'DRO departure burn', buttonLabel: 'Show DRO departure burn', burnType: 'Prograde burn near the lunar close-approach side of distant retrograde orbit to target the second close lunar flyby.', explain: 'To come home, Orion first peels away from distant retrograde orbit, then drops back toward the Moon for the return flyby.', type: 'curve', p0: v2(60, 13), p1: v2(48, 16), p2: v2(40, 0), p3: v2(53, -8), startTangentMode: 'preserve', duration: 6.1, primary: 'moon', statusText: 'Leaving Distant Retrograde Orbit', statusColor: '#0891b2', burn: 0.22, burnLabel: 'Artemis I: Distant retrograde orbit departure burn', burnExplain: 'Departure burn from distant retrograde orbit to set up the return powered flyby.', speed: 1.0 },
+                { title: 'Return powered flyby and Earth return', buttonLabel: 'Show return powered flyby and Earth return', burnType: 'Burn at the second close lunar flyby, followed by the Earth-return coast.', explain: 'The second close pass by the Moon uses both gravity and propulsion to slingshot Orion back toward Earth for re-entry.', type: 'curve', p0: v2(53, -8), p1: v2(60, -18), p2: v2(22, -24), p3: v2(-15, 0), duration: 8.4, primary: 'earth', endPolicy: 'earth_return', statusText: 'Return From the Moon', statusColor: '#1e3a8a', burn: 0.5, burnLabel: 'Artemis I: Return powered flyby', burnExplain: 'Burn at the return flyby to commit Orion to the Earth-return trajectory.', speed: 1.2 }
+            ]
+        },
+        artemis2: {
+            title: 'Artemis II (2026)',
+            buttonTitle: 'Artemis II (2026)',
+            color: '#0891b2',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put Artemis II into its initial Earth orbit',
+            overviewHtml: `<b>Artemis II (2026)</b><br><b>Mission:</b> First crewed Artemis flight, sending four astronauts around the Moon and back on a free-return trajectory.<br><br><b>Orbit family shown here:</b> Initial post-launch Earth orbit → apogee-raise burn → high Earth orbit checkout and proximity operations → perigee-raise / alignment burn → Trans-lunar injection (TLI) by Orion → crewed lunar flyby → free return to Earth.<br><br><b>Why this route?</b> Artemis II is a crewed lunar flyby rather than a lunar-orbit mission. NASA uses a hybrid free-return profile so the crew can check Orion in high Earth orbit first, then commit to the Moon with Orion’s own main-engine burn.`,
+            steps: [
+                { title: 'Initial post-launch Earth orbit', buttonLabel: 'Show initial Earth orbit', burnType: 'No new in-space burn shown here; this is the initial post-launch Earth orbit after core-stage insertion.', explain: 'The first Artemis II orbit is only mildly elliptical when you judge it from Earth’s centre rather than by altitude alone. This step shows the starting Earth orbit before the dedicated orbit-raising burns.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_MILD_ELLIPTICAL_LEO_APOGEE, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 4.2, primary: 'earth', statusText: 'Initial Post-launch Earth Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'Apogee-raise manoeuvre', buttonLabel: 'Show apogee-raise manoeuvre', burnType: 'Prograde burn at Earth perigee by the Interim Cryogenic Propulsion Stage (ICPS), raising apogee.', explain: 'The Interim Cryogenic Propulsion Stage performs the first major in-space burn near Earth perigee, raising apogee and stretching Orion’s path into high Earth orbit.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 28, periapsisAngle: Math.PI, startNu: 0, deltaNu: -2 * Math.PI, duration: 6.2, primary: 'earth', statusText: 'Apogee Raised into High Earth Orbit', statusColor: '#2563eb', burn: 0.34, burnLabel: 'Artemis II: Apogee-raise manoeuvre', burnExplain: 'Prograde ICPS burn at Earth perigee to raise apogee and place Orion into high Earth orbit.', speed: 1.0 },
+                { title: 'High Earth orbit checkout and proximity operations', buttonLabel: 'Show high Earth orbit checkout', burnType: 'No translunar burn here. The crew checks Orion in high Earth orbit and demonstrates proximity operations after separating from ICPS.', explain: 'Before committing to the Moon, the crew spends time in high Earth orbit checking systems. Orion separates from the Interim Cryogenic Propulsion Stage and performs a proximity-operations demonstration in preparation for later deep-space rendezvous tasks. This storyboard now lets that checkout phase continue until Orion is back near Earth apogee, so the later perigee-raise / alignment burn visibly happens at the correct high point of the orbit.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 28, periapsisAngle: Math.PI, startNu: Math.PI, deltaNu: 3 * Math.PI, duration: 7.6, primary: 'earth', statusText: 'High Earth Orbit Checkout', statusColor: '#1e40af', speed: 0.95 },
+                { title: 'Perigee-raise / alignment manoeuvre', buttonLabel: 'Show perigee-raise / alignment burn', burnType: 'Short prograde burn at Earth apogee by Orion’s European Service Module, raising perigee and refining alignment for Trans-lunar injection (TLI).', explain: 'After checkout, Orion uses its own service-module engine near Earth apogee. This short burn raises perigee, cleans up the high Earth orbit, and aligns the geometry for the later push to the Moon.', type: 'earthConic', rp: 23, ra: 28, periapsisAngle: Math.PI, startNu: Math.PI, deltaNu: -Math.PI, duration: 5.3, primary: 'earth', statusText: 'Perigee Raised and TLI Aligned', statusColor: '#0f766e', burn: 0.14, burnLabel: 'Artemis II: Perigee-raise / alignment manoeuvre', burnExplain: 'Short Orion service-module burn at Earth apogee to raise perigee and align the high Earth orbit for TLI.', speed: 0.95 },
+                { title: 'Trans-lunar injection (TLI)', buttonLabel: 'Show trans-lunar injection (TLI)', burnType: 'Long prograde burn by Orion at Earth perigee, on the side of Earth opposite the Moon.', explain: 'Orion now performs the main departure burn itself. In this simplified view, the burn happens at Earth perigee on the far side of Earth from the Moon, so the path sweeps out a broad free-return transfer ellipse instead of looking like a radial kick.', type: 'earthConic', rp: 23, ra: 52, periapsisAngle: Math.PI, startNu: 0, deltaNu: -Math.PI, duration: 7.8, primary: 'earth', statusText: 'Trans-lunar Injection (TLI)', statusColor: '#8b5cf6', burn: 1.72, burnLabel: 'Artemis II: Trans-lunar injection (TLI)', burnExplain: 'Long Orion main-engine burn at Earth perigee to leave high Earth orbit and commit the crew to the lunar free-return trajectory.', speed: 1.2 },
+                { title: 'Crewed lunar flyby', buttonLabel: 'Show crewed lunar flyby', burnType: 'No lunar orbit insertion burn. This is a flyby, not a capture into lunar orbit.', explain: 'Artemis II does not perform Lunar orbit insertion (LOI). Orion sweeps smoothly around the far side of the Moon and then heads back toward Earth on a free-return path.', type: 'moonSwingby', rStart: 8.0, rPeri: 6.2, rEnd: 17.0, startAngle: Math.PI, deltaAngle: -1.22 * Math.PI, duration: 5.5, primary: 'moon', statusText: 'Crewed Lunar Flyby', statusColor: '#d97706', speed: 1.0 },
+                { title: 'Free return to Earth', buttonLabel: 'Show free return to Earth', burnType: 'No dedicated Earth-reentry burn is shown here; free-return geometry plus small trajectory-correction burns bring Orion back to Earth.', explain: 'After the flyby, Orion naturally falls back toward Earth. In reality there are small correction burns to hit the re-entry corridor precisely, but not a big final burn to make atmospheric entry happen.', type: 'curve', p0: v2(60, -13), p1: v2(48, -24), p2: v2(16, -20), p3: v2(-15, 0), duration: 8.6, primary: 'earth', endPolicy: 'earth_return', statusText: 'Free Return to Earth', statusColor: '#1e3a8a', speed: 1.15 }
+            ]
+        },
+        capstone: {
+            title: 'CAPSTONE (2022)',
+            buttonTitle: 'CAPSTONE (2022)',
+            color: '#6366f1',
+            moonPos: v2(60, 0),
+            startButtonLabel: '1. Put CAPSTONE into initial Earth orbit',
+            overviewHtml: `<b>CAPSTONE (2022)</b><br><b>Mission:</b> Small pathfinder mission sent to test the near-rectilinear halo orbit planned for Gateway.<br><br><b>Orbit family shown here:</b> Initial Earth orbit → repeated Earth-apogee-raising burns by the Photon stage → release onto ballistic lunar transfer → near-rectilinear halo orbit (NRHO) insertion → cleanup burns in NRHO.<br><br><b>Why this route?</b> CAPSTONE did not use a direct Apollo-style translunar injection and low lunar orbit. It used staged Earth-orbit raising and then a long ballistic transfer to reach the special Gateway orbit family.`,
+            steps: [
+                { title: 'Initial Earth orbit', buttonLabel: 'Show initial Earth orbit', burnType: 'No deep-space burn shown here; this is the initial Earth orbit after launch.', explain: 'CAPSTONE begins close to Earth before the Photon stage starts the sequence of orbit-raising burns.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: HISTORICAL_LOW_EARTH_RADIUS, periapsisAngle: Math.PI, startNu: Math.PI / 2, deltaNu: -Math.PI / 2, duration: 3.6, primary: 'earth', statusText: 'Initial Earth Orbit', statusColor: '#1d4ed8', speed: 0.9 },
+                { title: 'First set of Earth-orbit-raising burns', buttonLabel: 'Show first set of orbit-raising burns', burnType: 'Repeated prograde burns near Earth perigee to raise apogee.', explain: 'Rocket Lab\'s Photon stage fired repeatedly over several days, each time raising the high point of the Earth orbit farther away.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 28, periapsisAngle: Math.PI, startNu: 0, deltaNu: -2 * Math.PI, duration: 6.0, primary: 'earth', statusText: 'Earth Orbit Raised by Photon', statusColor: '#2563eb', burn: 0.34, burnLabel: 'CAPSTONE: First set of Photon orbit-raising burns', burnExplain: 'Repeated prograde burns near Earth perigee to raise apogee before the final transfer release.', speed: 1.0 },
+                { title: 'Later orbit-raising burns before release', buttonLabel: 'Show later orbit-raising burns', burnType: 'More repeated prograde burns near Earth perigee to raise apogee much farther.', explain: 'The same pattern continues until the orbit is stretched enough for CAPSTONE to be released onto its long ballistic transfer.', type: 'earthConic', rp: HISTORICAL_LOW_EARTH_RADIUS, ra: 44, periapsisAngle: Math.PI, startNu: 0, deltaNu: -2 * Math.PI, duration: 6.8, primary: 'earth', statusText: 'Very High Earth Orbit Before Release', statusColor: '#1e40af', burn: 0.28, burnLabel: 'CAPSTONE: Later Photon orbit-raising burns', burnExplain: 'Further prograde perigee burns raise apogee again before CAPSTONE is released from Photon.', speed: 1.0 },
+                { title: 'Ballistic lunar transfer release', buttonLabel: 'Show ballistic lunar transfer', burnType: 'Final release onto a long ballistic lunar transfer, followed by small trajectory-correction burns.', explain: 'After the orbit-raising campaign, CAPSTONE leaves Earth from a very elongated Earth orbit onto a long, fuel-efficient ballistic transfer, shown here as a broad high arc rather than a direct Apollo-style shot.', type: 'spline', points: [v2(-15, 0), v2(-10, 26), v2(8, 54), v2(42, 72), v2(86, 62), v2(98, 28), v2(73, 7)], duration: 10.2, primary: 'earth', statusText: 'Ballistic Lunar Transfer', statusColor: '#8b5cf6', burn: 0.95, burnLabel: 'CAPSTONE: Release onto ballistic lunar transfer', burnExplain: 'Final transfer release after the Earth-orbit-raising campaign, followed by small correction burns during the long cruise.', speed: 1.15 },
+                { title: 'Near-rectilinear halo orbit (NRHO) insertion', buttonLabel: 'Show NRHO insertion', burnType: 'Retrograde burn near the lunar close-approach / perilune side of arrival into near-rectilinear halo orbit.', explain: 'At the Moon, CAPSTONE performs the burn that puts it into the highly elongated near-rectilinear halo orbit planned for Gateway.', type: 'harmonicOrbit', ax: 14, ay: 9, bx: 6, startAngle: Math.PI, deltaAngle: 2 * Math.PI, duration: 7.4, primary: 'moon', statusText: 'Near-rectilinear Halo Orbit (NRHO)', statusColor: '#4f46e5', burn: -0.22, burnLabel: 'CAPSTONE: Near-rectilinear halo orbit insertion', burnExplain: 'Retrograde burn at lunar arrival to enter the Gateway-style near-rectilinear halo orbit.', speed: 0.9 },
+                { title: 'NRHO cleanup burns', buttonLabel: 'Show NRHO cleanup burns', burnType: 'Small cleanup burns near repeated perilune and apolune passages to refine the halo orbit after insertion.', explain: 'CAPSTONE then uses additional trim manoeuvres to refine and verify the NRHO geometry.', type: 'harmonicOrbit', ax: 13, ay: 8, bx: 5, startAngle: Math.PI, deltaAngle: 2 * Math.PI, duration: 6.0, primary: 'moon', statusText: 'Refined NRHO', statusColor: '#4338ca', burn: -0.06, burnLabel: 'CAPSTONE: NRHO cleanup burns', burnExplain: 'Small cleanup manoeuvres after insertion to refine the near-rectilinear halo orbit.', speed: 0.85 }
+            ]
+        }
+    };
+
+    function buildMissionStepListHtml(source) {
+        const runtime = scriptedMission && scriptedMission.id === source.key ? scriptedMission : null;
+        const items = source.steps.map((step, index) => {
+            let cls = 'pending';
+            if (runtime) {
+                if (runtime.steps[index].finished) cls = 'complete';
+                else if (runtime.active && runtime.segmentIndex === index) cls = 'current';
+            }
+            return `<div class="mission-step-item ${cls}"><b>Step ${index + 1}: ${step.title}</b><div class="mission-step-meta">${step.burnType}</div></div>`;
+        }).join('');
+        return `<div class="mission-step-title">Burn-by-burn sequence</div><div class="mission-step-items">${items}</div>`;
+    }
+    function updateMissionPanels() {
+        updateMissionButtonHighlights();
+        const planBox = document.getElementById('mission-plan-box');
+        const stepBox = document.getElementById('mission-step-list');
+        const textBox = document.getElementById('mission-text-box');
+        const controlsBox = document.getElementById('mission-sequence-buttons');
+        const loadBtn = document.getElementById('btn-mission-load');
+        const nextBtn = document.getElementById('btn-mission-next');
+        const resetBtn = document.getElementById('btn-abort-mission');
+
+        if (!selectedMissionId) {
+            controlsBox.style.display = 'none';
+            updateMissionActionButtonStyles('idle');
+            planBox.innerHTML = 'Select a mission to see what it was trying to do, which orbit family it used, and the burn-by-burn sequence.';
+            stepBox.innerHTML = 'Select a mission to see the step-by-step burn list.';
+            textBox.innerHTML = 'Select a mission, then use the first button to place the spacecraft into its starting Earth orbit.';
+            return;
+        }
+
+        const source = missionCatalog[selectedMissionId];
+        planBox.innerHTML = source.overviewHtml;
+        stepBox.innerHTML = buildMissionStepListHtml(source);
+        controlsBox.style.display = 'block';
+        resetBtn.disabled = !!(scriptedMission && scriptedMission.active);
+
+        if (!scriptedMission || scriptedMission.id !== selectedMissionId) {
+            loadBtn.disabled = false;
+            loadBtn.textContent = source.startButtonLabel;
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Next step';
+            updateMissionActionButtonStyles('start');
+            textBox.innerHTML = `<b>${source.title}</b><br>Ready. Click the first button to place the spacecraft into its starting Earth orbit.`;
+            return;
+        }
+
+        if (scriptedMission.active) {
+            loadBtn.disabled = true;
+            nextBtn.disabled = true;
+            loadBtn.textContent = 'Animating current step…';
+            nextBtn.textContent = 'Next step';
+            updateMissionActionButtonStyles('start');
+            return;
+        }
+
+        if (scriptedMission.complete) {
+            loadBtn.disabled = false;
+            loadBtn.textContent = 'Replay from the first step';
+            nextBtn.disabled = true;
+            nextBtn.textContent = 'Mission complete';
+            updateMissionActionButtonStyles('start');
+            textBox.innerHTML = `<b>${source.title}</b><br>Mission step sequence complete. Use the replay button to start again from the first step.`;
+            return;
+        }
+
+        const nextSeg = scriptedMission.steps[scriptedMission.segmentIndex];
+        loadBtn.disabled = false;
+        loadBtn.textContent = 'Replay from the first step';
+        nextBtn.disabled = false;
+        nextBtn.textContent = `Next: ${nextSeg.title}`;
+        updateMissionActionButtonStyles('progress');
+    }
+    function renderMissionButtons() {
+        const container = document.getElementById('mission-button-list');
+        container.innerHTML = '';
+        Object.entries(missionCatalog).sort((a, b) => getMissionYear(a[1]) - getMissionYear(b[1])).forEach(([id, mission]) => {
+            mission.key = id;
+            const btn = document.createElement('button');
+            btn.className = 'mission-btn';
+            btn.style.background = mission.color;
+            btn.dataset.missionId = id;
+            btn.textContent = mission.buttonTitle || mission.title;
+            btn.addEventListener('click', () => selectMission(id));
+            container.appendChild(btn);
+        });
+        updateMissionButtonHighlights();
+    }
+    function clearScriptedMission() {
+        scriptedMission = null;
+        scriptedStatusOverride = null;
+        scriptedFrame = null;
+    }
+    function primeMissionSystem(source) {
+        clearScriptedMission();
+        resetScriptedTrail();
+        currentMoonX = source.moonPos.x;
+        currentMoonY = source.moonPos.y;
+        moonAngle = Math.atan2(currentMoonY, currentMoonX);
+        hasMoon = true;
+        moon.visible = true;
+        moonOrbitLine.visible = true;
+        isCrashed = false;
+        isGlitched = false;
+        crashTarget = '';
+        showMarkers = false;
+        pendingApsisWait = null;
+        deltaE_Opacity = 0;
+        updateSurfaces();
+    }
+    function instantiateMission(source) {
+        const prepared = prepareMissionContinuity(source);
+        primeMissionSystem(prepared);
+        scriptedMission = {
+            id: prepared.key,
+            title: prepared.title,
+            moonPos: prepared.moonPos,
+            steps: prepared.steps.map(step => ({ ...step, started: false, finished: false })),
+            segmentIndex: 0,
+            segmentTime: 0,
+            elapsed: 0,
+            prevPoint: null,
+            complete: false,
+            active: false
+        };
+        const firstPoint = getSegmentPoint(scriptedMission.steps[0], 0, scriptedMission);
+        const secondPoint = getSegmentPoint(scriptedMission.steps[0], 0.02, scriptedMission);
+        pos.set(firstPoint.x, firstPoint.y, 0);
+        vel.set(secondPoint.x - firstPoint.x, secondPoint.y - firstPoint.y, 0);
+        prevR = Math.sqrt(pos.x * pos.x + pos.y * pos.y);
+        prevRDot = 0;
+        maxAltSinceLaunch = prevR;
+        updateSurfaces();
+    }
+    function selectMission(missionId) {
+        selectedMissionId = missionId;
+        primeMissionSystem(missionCatalog[missionId]);
+        clearScriptedMission();
+        parkMissionSpacecraft();
+        setSpeed(1.0);
+        updateMissionPanels();
+        updateFeedbackLink();
+    }
+    function startCurrentMissionStepFromState() {
+        if (!selectedMissionId) return;
+        if (!scriptedMission || scriptedMission.id !== selectedMissionId) {
+            instantiateMission(missionCatalog[selectedMissionId]);
+        }
+        if (scriptedMission.complete || scriptedMission.active) return;
+        scriptedMission.active = true;
+        scriptedMission.segmentTime = 0;
+        scriptedMission.prevPoint = null;
+        updateMissionPanels();
+    }
+    function replaySelectedMission() {
+        if (!selectedMissionId) return;
+        instantiateMission(missionCatalog[selectedMissionId]);
+        startCurrentMissionStepFromState();
+    }
+    function playNextMissionStep() {
+        if (!selectedMissionId) return;
+        if (!scriptedMission || scriptedMission.id !== selectedMissionId) return;
+        if (scriptedMission.complete || scriptedMission.active) return;
+        startCurrentMissionStepFromState();
+    }
+    function resetSelectedMission() {
+        if (!selectedMissionId) return;
+        primeMissionSystem(missionCatalog[selectedMissionId]);
+        clearScriptedMission();
+        parkMissionSpacecraft();
+        updateMissionPanels();
+    }
+    function applyScriptedSegmentPresentation(mission, seg, stepIndex) {
+        scriptedStatusOverride = seg.statusText ? { text: seg.statusText, color: seg.statusColor || '#1d4ed8' } : null;
+        scriptedFrame = { primary: seg.primary || 'earth' };
+        document.getElementById('mission-text-box').innerHTML = `<b>${mission.title} — Step ${stepIndex + 1} of ${mission.steps.length}</b><br><b>${seg.title}</b><br>Burn / manoeuvre: <b>${seg.burnType}</b><br><br>${seg.explain}`;
+        if (seg.speed) setSpeed(seg.speed);
+        if (seg.burn !== undefined) {
+            deltaV = seg.burn;
+            const burnColor = seg.burn >= 0 ? '#10b981' : '#ef4444';
+            const dir = getSegmentDirection(seg, mission);
+            showToast(`<b>${seg.burnLabel || seg.title}</b><br>${seg.burnExplain || seg.explain}`, 4500, burnColor);
+            spawnParticles(pos.clone(), dir.lengthSq() > 0 ? dir : new THREE.Vector3(0, -1, 0), Math.max(0.6, Math.abs(seg.burn)), seg.burn < 0, seg.burn < 0 ? 0xef4444 : 0xffa500);
+        }
+    }
+    function updateScriptedMission(dt) {
+        if (!scriptedMission || scriptedMission.complete || !scriptedMission.active) return;
+        const seg = scriptedMission.steps[scriptedMission.segmentIndex];
+        if (!seg) {
+            scriptedMission.complete = true;
+            scriptedMission.active = false;
+            scriptedStatusOverride = { text: 'Mission Step Complete', color: '#1e3a8a' };
+            updateMissionPanels();
+            return;
+        }
+        if (!seg.started) {
+            seg.started = true;
+            applyScriptedSegmentPresentation(scriptedMission, seg, scriptedMission.segmentIndex);
+        }
+        scriptedMission.segmentTime += dt;
+        scriptedMission.elapsed += dt;
+        const t = Math.min(scriptedMission.segmentTime / seg.duration, 1);
+        const point = getSegmentPoint(seg, t, scriptedMission);
+        const prevPoint = scriptedMission.prevPoint;
+        const frameVel = deriveVelocityFromPath(point, prevPoint, dt);
+        pos.x = point.x;
+        pos.y = point.y;
+        if (frameVel.lengthSq() > 0) vel.copy(frameVel);
+        if (prevPoint) {
+            trailDistTracker += Math.sqrt((point.x - prevPoint.x) ** 2 + (point.y - prevPoint.y) ** 2);
+            if (trailDistTracker > 0.55) {
+                trail.push(new THREE.Vector3(point.x, point.y, Math.max(getPotential(point.x, point.y), Z_CAP)));
+                if (trail.length > TRAIL_LENGTH) trail.shift();
+                trailGeo.setFromPoints(trail);
+                trailDistTracker = 0;
+            }
+        }
+        scriptedMission.prevPoint = { x: point.x, y: point.y };
+        if (scriptedMission.segmentTime >= seg.duration) {
+            seg.finished = true;
+            scriptedMission.active = false;
+            scriptedMission.segmentIndex += 1;
+            scriptedMission.segmentTime = 0;
+            scriptedMission.prevPoint = null;
+            if (scriptedMission.segmentIndex >= scriptedMission.steps.length) {
+                scriptedMission.complete = true;
+                scriptedStatusOverride = { text: seg.completionText || 'Mission Step Sequence Complete', color: seg.completionColor || '#1e3a8a' };
+            }
+            updateMissionPanels();
+        }
+    }
+
+    renderMissionButtons();
+    document.getElementById('btn-mission-load').addEventListener('click', replaySelectedMission);
+    document.getElementById('btn-mission-next').addEventListener('click', playNextMissionStep);
+    document.getElementById('btn-abort-mission').addEventListener('click', resetSelectedMission);
+
+    // --- Main Loop ---
+    const fixedDt = 0.002; 
+    const baseStepsPerFrame = 25; 
+
+    function animate() {
+        requestAnimationFrame(animate);
+        let steps = Math.floor(baseStepsPerFrame * simSpeed); 
+        let dEarth = 0, dMoon = 0;
+
+        if (scriptedMission && !isCrashed && !isGlitched) {
+            updateScriptedMission(fixedDt * steps * Math.max(simSpeed, 0.1));
+            dEarth = Math.sqrt(pos.x*pos.x + pos.y*pos.y);
+            dMoon = hasMoon ? Math.sqrt((pos.x - currentMoonX)**2 + (pos.y - currentMoonY)**2) : 999;
+            updateSurfaces();
+        } else if (isMissionMode) {
+            dEarth = Math.sqrt(pos.x*pos.x + pos.y*pos.y);
+            dMoon = hasMoon ? Math.sqrt((pos.x - currentMoonX)**2 + (pos.y - currentMoonY)**2) : 999;
+            updateSurfaces();
+        } else if (!isCrashed && !isGlitched) {
+            for(let i=0; i<steps; i++) {
+                
+                if (isDynamicSystem && hasMoon) {
+                    moonAngle += getMoonOmega() * fixedDt;
+                    currentMoonX = MOON_DIST * Math.cos(moonAngle);
+                    currentMoonY = MOON_DIST * Math.sin(moonAngle);
+                }
+
+                // --- Symplectic Velocity Verlet Integrator ---
+                let ax1 = getAccX(pos.x, pos.y);
+                let ay1 = getAccY(pos.x, pos.y);
+                
+                vel.x += 0.5 * ax1 * fixedDt;
+                vel.y += 0.5 * ay1 * fixedDt;
+                
+                let prevY = pos.y;
+                let prevX = pos.x;
+                
+                pos.x += vel.x * fixedDt;
+                pos.y += vel.y * fixedDt;
+                
+                let ax2 = getAccX(pos.x, pos.y);
+                let ay2 = getAccY(pos.x, pos.y);
+                
+                vel.x += 0.5 * ax2 * fixedDt;
+                vel.y += 0.5 * ay2 * fixedDt;
+
+                dEarth = Math.sqrt(pos.x*pos.x + pos.y*pos.y);
+                dMoon = hasMoon ? Math.sqrt((pos.x - currentMoonX)**2 + (pos.y - currentMoonY)**2) : 999;
+                
+                if (dEarth > maxAltSinceLaunch) maxAltSinceLaunch = dEarth;
+
+                if (collisionsEnabled) {
+                    if (dEarth < R_EARTH_COL) { isCrashed = true; crashTarget = "Earth"; break; }
+                    if (dMoon < R_MOON_COL) { isCrashed = true; crashTarget = "Moon"; break; }
+                } else {
+                    if (!isGlitched && (dEarth < 0.5 || (hasMoon && dMoon < 0.5))) {
+                        isGlitched = true;
+                        let toast = document.getElementById('glitch-toast');
+                        toast.style.display = 'block';
+                        setTimeout(() => { toast.style.display = 'none'; }, 6000);
+                    }
+                }
+                
+                if (collisionsEnabled) isGlitched = false;
+
+                inMoonSOI = scriptedFrame ? scriptedFrame.primary === 'moon' : (hasMoon && dMoon < SOI_MOON);
+                let currentR = inMoonSOI ? dMoon : dEarth;
+                let rDot = currentR - prevR;
+                
+                if (scriptedMission) {
+                    // Scripted mission playback is handled in its own branch above.
+                } else if (scheduledBoost) {
+                    let isCircular = currentEccentricity < 0.01;
+                    let crossedX_Neg = prevY > 0 && pos.y <= 0 && pos.x < 0;
+                    let crossedX_Pos = prevY < 0 && pos.y >= 0 && pos.x > 0;
+
+                    if (isCircular && !inMoonSOI) {
+                        if (scheduledBoost === 'perigee' && crossedX_Neg) applyBoost('perigee');
+                        else if (scheduledBoost === 'apogee' && crossedX_Pos) applyBoost('apogee');
+                    } else {
+                        if (scheduledBoost === 'perigee' && prevRDot < 0 && rDot > 0) applyBoost(inMoonSOI ? 'perilune' : 'perigee');
+                        else if (scheduledBoost === 'apogee' && prevRDot > 0 && rDot < 0) applyBoost(inMoonSOI ? 'apolune' : 'apogee');
+                    }
+                }
+
+                if (!showMarkers) {
+                    if (pendingApsisWait === 'waitingForApogee' && prevRDot > 0 && rDot < 0) {
+                        showMarkers = true; pendingApsisWait = null;
+                    } else if (pendingApsisWait === 'waitingForPerigee' && prevRDot < 0 && rDot > 0) {
+                        showMarkers = true; pendingApsisWait = null;
+                    }
+                }
+                
+                prevRDot = rDot;
+                prevR = currentR;
+
+                trailDistTracker += Math.sqrt(vel.x*vel.x + vel.y*vel.y) * fixedDt;
+                if (trailDistTracker > 0.6) { 
+                    pos.z = Math.max(getPotential(pos.x, pos.y), Z_CAP);
+                    trail.push(pos.clone());
+                    if (trail.length > TRAIL_LENGTH) trail.shift();
+                    trailGeo.setFromPoints(trail);
+                    trailDistTracker = 0;
+                }
+            }
+        }
+
+        if (isDynamicSystem && hasMoon && !isCrashed && !isGlitched) {
+            updateSurfaces();
+        }
+
+        // --- Visuals Updates ---
+        pos.z = Math.max(getPotential(pos.x, pos.y), Z_CAP);
+        satellite.position.copy(pos);
+
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.life -= (fixedDt * steps);
+            if (p.life <= 0) { scene.remove(p.mesh); particles.splice(i, 1); }
+            else {
+                p.mesh.position.add(p.vel.clone().multiplyScalar(fixedDt * steps));
+                p.mesh.material.opacity = Math.min(p.life, 1.0);
+                p.mesh.scale.setScalar(Math.min(p.life, 1.0));
+            }
+        }
+
+        let deltaBar = document.getElementById('bar-et-delta');
+        if (deltaE_Opacity > 0) {
+            deltaBar.style.width = deltaE_Width + '%';
+            deltaBar.style.left = deltaE_Left + '%';
+            deltaBar.style.opacity = deltaE_Opacity;
+            deltaE_Opacity -= 0.01 * (simSpeed || 1.0); 
+        } else {
+            deltaBar.style.opacity = 0;
+        }
+
+        dEarth = Math.sqrt(pos.x*pos.x + pos.y*pos.y);
+        dMoon = hasMoon ? Math.sqrt((pos.x - currentMoonX)**2 + (pos.y - currentMoonY)**2) : 999;
+        let vMagSq = vel.x*vel.x + vel.y*vel.y;
+        inMoonSOI = scriptedFrame ? scriptedFrame.primary === 'moon' : (hasMoon && dMoon < SOI_MOON);
+
+        let activeMu, activeR, activeX, activeY, activeVX, activeVY;
+
+        if (inMoonSOI) {
+            activeMu = G * M_MOON; activeR = dMoon; activeX = pos.x - currentMoonX; activeY = pos.y - currentMoonY;
+            let vMoonX = isDynamicSystem ? -getMoonOmega() * currentMoonY : 0;
+            let vMoonY = isDynamicSystem ? getMoonOmega() * currentMoonX : 0;
+            activeVX = vel.x - vMoonX; activeVY = vel.y - vMoonY;
+            document.getElementById('lbl-alt').innerText = "Lunar Alt (r)";
+        } else {
+            activeMu = G * M_EARTH; activeR = dEarth; activeX = pos.x; activeY = pos.y;
+            activeVX = vel.x; activeVY = vel.y;
+            document.getElementById('lbl-alt').innerText = "Earth Alt (r)";
+        }
+
+        let activeVMagSq = activeVX*activeVX + activeVY*activeVY;
+        let activeVMag = Math.sqrt(activeVMagSq);
+        let h = activeX * activeVY - activeY * activeVX; 
+        let ex = (activeVY * h) / activeMu - (activeX / activeR);
+        let ey = (-activeVX * h) / activeMu - (activeY / activeR);
+        currentEccentricity = Math.sqrt(ex*ex + ey*ey);
+        
+        let specEnergy = (activeVMagSq / 2) - (activeMu / activeR);
+        let a = -activeMu / (2 * specEnergy);
+        let rp = a * (1 - currentEccentricity);
+        let ra = a * (1 + currentEccentricity);
+
+        let pName = inMoonSOI ? "Perilune" : "Perigee";
+        let aName = inMoonSOI ? "Apolune" : "Apogee";
+        document.getElementById('lbl-per').innerText = `${pName} (rp)`;
+        document.getElementById('lbl-apo').innerText = `${aName} (ra)`;
+
+        document.getElementById('m-alt').innerText = activeR.toFixed(1);
+        document.getElementById('m-vel').innerText = activeVMag.toFixed(1);
+        
+        if (specEnergy >= 0 || isCrashed) {
+            document.getElementById('m-sma').innerText = "∞"; document.getElementById('m-ecc').innerText = isCrashed ? "-" : currentEccentricity.toFixed(2);
+            document.getElementById('m-per').innerText = isCrashed ? "-" : rp.toFixed(1); document.getElementById('m-apo').innerText = "∞";
+            document.getElementById('m-period').innerText = "∞";
+        } else {
+            document.getElementById('m-sma').innerText = a.toFixed(1); document.getElementById('m-ecc').innerText = currentEccentricity.toFixed(2);
+            document.getElementById('m-per').innerText = rp.toFixed(1); document.getElementById('m-apo').innerText = ra.toFixed(1);
+            
+            let T = 2 * Math.PI * Math.sqrt((a*a*a)/activeMu);
+            let hours = T * 2.0; 
+            if (hours > 72) document.getElementById('m-period').innerText = (hours/24).toFixed(1) + " Days";
+            else document.getElementById('m-period').innerText = hours.toFixed(1) + " Hrs";
+        }
+
+        let epEarth = -(G * M_EARTH) / Math.max(dEarth, 0.1);
+        let epMoon = hasMoon ? -(G * M_MOON) / Math.max(dMoon, 0.1) : 0;
+        let totalEp = epEarth + epMoon;
+        let totalEk = vMagSq / 2;
+        let totalEnergy = totalEk + totalEp;
+        const eScale = 50 / MAX_ENERGY_VISUAL; 
+        
+        document.getElementById('bar-ek').style.width = Math.min(totalEk * eScale, 50) + '%';
+        document.getElementById('bar-ep').style.width = Math.min(Math.abs(totalEp) * eScale, 50) + '%';
+        
+        if (totalEnergy < 0) {
+            document.getElementById('bar-et-neg').style.width = Math.min(Math.abs(totalEnergy) * eScale, 50) + '%';
+            document.getElementById('bar-et-pos').style.width = '0%';
+        } else {
+            document.getElementById('bar-et-neg').style.width = '0%';
+            document.getElementById('bar-et-pos').style.width = Math.min(totalEnergy * eScale, 50) + '%';
+        }
+
+        let statusBox = document.getElementById('status-box');
+        let eduPanel = document.getElementById('edu-panel');
+        let btnP = document.getElementById('btn-perigee');
+        let btnA = document.getElementById('btn-apogee');
+
+        btnP.innerText = scheduledBoost === 'perigee' ? `Cancel Burn at ${pName}` : `Schedule Burn at ${pName}`;
+        btnA.innerText = scheduledBoost === 'apogee' ? `Cancel Burn at ${aName}` : `Schedule Burn at ${aName}`;
+
+        let isLTO = hasMoon && currentEccentricity > 0.5 && ra >= 48 && ra <= 150 && !inMoonSOI && totalEnergy < 0;
+
+        if (scriptedStatusOverride) {
+            statusBox.innerText = scriptedStatusOverride.text;
+            statusBox.style.background = scriptedStatusOverride.color;
+            perigeeMarker.visible = apogeeMarker.visible = false;
+        } else if (isCrashed) {
+            statusBox.innerText = `LANDED ON (CRASHED INTO) ${crashTarget.toUpperCase()}!`;
+            statusBox.style.background = '#dc2626'; perigeeMarker.visible = apogeeMarker.visible = false;
+            
+            let crashMsg = `<b>Landed on (crashed into) ${crashTarget}.</b><br>You executed a flawless lithobraking manoeuvre.`;
+            if (crashTarget === 'Earth' && maxAltSinceLaunch > 45 && hasMoon) {
+                crashMsg = `<b>Free Return Trajectory completed!</b><br>Trajectory successfully intercepted Earth after a lunar flyby.`;
+            }
+            crashMsg += `<br><br><i>It's probably best to have slowed down first to survive, but that's for another visualization.</i>`;
+            
+            if (!isMissionMode) {
+                document.getElementById('edu-main-text').innerHTML = crashMsg;
+                document.getElementById('loi-text').style.display = 'none';
+                eduPanel.className = 'edu-highlight';
+            }
+        } else {
+            if (totalEnergy >= 0 && !inMoonSOI) {
+                statusBox.innerText = "Escape Trajectory"; statusBox.style.background = '#9333ea';
+            } else if (inMoonSOI) {
+                if (specEnergy >= 0) statusBox.innerText = "Lunar Flyby (Uncaptured)";
+                else statusBox.innerText = "Captured in Lunar Orbit!";
+                statusBox.style.background = '#d97706';
+                if (!isMissionMode && !eduPanel.classList.contains('edu-highlight')) {
+                    document.getElementById('loi-text').style.display = 'block';
+                    eduPanel.classList.add('edu-highlight');
+                }
+            } else if (isLTO) {
+                statusBox.innerText = "Lunar Transfer Orbit (LTO)"; statusBox.style.background = '#8b5cf6';
+                if (!isMissionMode) {
+                    if (isDynamicSystem) document.getElementById('edu-main-text').innerHTML = `<b>Lunar Transfer Orbit (LTO) Achieved!</b><br>Your apogee will cross the Moon's orbital path. Now, the question is: did you time your <b>Phase Angle</b> correctly to actually intercept it?`;
+                    else document.getElementById('edu-main-text').innerHTML = `<b>Lunar Transfer Orbit (LTO) Achieved!</b><br>Your apogee will cross the Moon's orbital path.`;
+                    document.getElementById('loi-text').style.display = 'none';
+                    eduPanel.className = '';
+                }
+            } else {
+                statusBox.innerText = "Orbiting Earth"; statusBox.style.background = '#1e3a8a';
+                if (!isMissionMode) {
+                    document.getElementById('loi-text').style.display = 'none';
+                    if (!document.getElementById('edu-main-text').innerHTML.includes("Velocity Verlet")) updateEduPanel();
+                }
+            }
+
+            if (specEnergy < 0 && showMarkers) {
+                let centerOffset = inMoonSOI ? new THREE.Vector3(currentMoonX, currentMoonY, 0) : new THREE.Vector3(0,0,0);
+                let pX, pY, aX, aY;
+                
+                if (currentEccentricity < 0.01 && !inMoonSOI) {
+                    let mAngle = Math.atan2(currentMoonY, currentMoonX);
+                    pX = activeR * Math.cos(mAngle + Math.PI) + centerOffset.x; 
+                    pY = activeR * Math.sin(mAngle + Math.PI) + centerOffset.y;
+                    aX = activeR * Math.cos(mAngle) + centerOffset.x; 
+                    aY = activeR * Math.sin(mAngle) + centerOffset.y;
+                } else {
+                    pX = rp * (ex/currentEccentricity) + centerOffset.x; pY = rp * (ey/currentEccentricity) + centerOffset.y;
+                    aX = -ra * (ex/currentEccentricity) + centerOffset.x; aY = -ra * (ey/currentEccentricity) + centerOffset.y;
+                }
+                
+                perigeeMarker.position.set(pX, pY, Math.max(getPotential(pX, pY), Z_CAP) + 6); perigeeMarker.visible = true;
+                apogeeMarker.position.set(aX, aY, Math.max(getPotential(aX, aY), Z_CAP) + 6); apogeeMarker.visible = true;
+            } else {
+                perigeeMarker.visible = apogeeMarker.visible = false;
+            }
+        }
+        controls.update(); renderer.render(scene, camera);
+    }
+
+    function getRadialBurnOutwardUnit() {
+        if (inMoonSOI && hasMoon) {
+            const fromMoon = new THREE.Vector3(pos.x - currentMoonX, pos.y - currentMoonY, 0);
+            if (fromMoon.lengthSq() > 1e-8) return fromMoon.normalize();
+        }
+        const fromEarth = new THREE.Vector3(pos.x, pos.y, 0);
+        if (fromEarth.lengthSq() > 1e-8) return fromEarth.normalize();
+        if (vel.lengthSq() > 1e-8) return new THREE.Vector3(vel.y, -vel.x, 0).normalize();
+        return new THREE.Vector3(1, 0, 0);
+    }
+
+    function applyBoost(apsisHit) {
+        if(isCrashed || isGlitched) return;
+
+        let dEarth = Math.sqrt(pos.x*pos.x + pos.y*pos.y);
+        let dMoon = hasMoon ? Math.sqrt((pos.x - currentMoonX)**2 + (pos.y - currentMoonY)**2) : 999;
+        let epEarth = -(G * M_EARTH) / Math.max(dEarth, 0.1);
+        let epMoon = hasMoon ? -(G * M_MOON) / Math.max(dMoon, 0.1) : 0;
+        let ep = epEarth + epMoon;
+        
+        let old_ek = (vel.x*vel.x + vel.y*vel.y) / 2;
+        let old_e = old_ek + ep;
+
+        if (apsisHit === 'radial') {
+            const radialOut = getRadialBurnOutwardUnit();
+            const burnVec = radialOut.clone().multiplyScalar(deltaV);
+            vel.add(burnVec);
+            spawnParticles(pos, burnVec, Math.abs(deltaV), false, 0x38bdf8);
+            const primaryName = (inMoonSOI && hasMoon) ? 'Moon' : 'Earth';
+            const burnSense = deltaV >= 0 ? 'outward' : 'inward';
+            if (!isMissionMode) {
+                showToast(
+                    `<b>${burnSense.charAt(0).toUpperCase() + burnSense.slice(1)} radial burn relative to the ${primaryName}.</b><br>On this control, <b>+</b> means away from the centre and <b>-</b> means toward the centre.<br><br>Because this burn adds sideways speed rather than braking along the track, total orbital energy usually increases for either inward or outward radial nudges of the same size.`,
+                    7200,
+                    '#38bdf8'
+                );
+            }
+        } else {
+            let vDir = vel.clone().normalize();
+            vel.add(vDir.multiplyScalar(deltaV));
+            spawnParticles(pos, vel, Math.abs(deltaV), deltaV < 0, 0xff6600); 
+            
+            let isPrograde = deltaV > 0;
+            let pName = inMoonSOI ? "Perilune" : "Perigee";
+            let aName = inMoonSOI ? "Apolune" : "Apogee";
+            let msg = "";
+            
+            if (apsisHit === 'perigee' || apsisHit === 'perilune') {
+                pendingApsisWait = 'waitingForApogee';
+                if (isPrograde) msg = `<b>Prograde Burn at ${pName}!</b><br>Adding kinetic energy here efficiently raises your <i>${aName}</i> on the opposite side.`;
+                else msg = `<b>Retrograde Burn at ${pName}!</b><br>Removing kinetic energy here drops your <i>${aName}</i>.`;
+            } else if (apsisHit === 'apogee' || apsisHit === 'apolune') {
+                pendingApsisWait = 'waitingForPerigee';
+                if (isPrograde) msg = `<b>Prograde Burn at ${aName}!</b><br>Adding kinetic energy here raises your <i>${pName}</i> on the opposite side.`;
+                else msg = `<b>Retrograde Burn at ${aName}!</b><br>Removing kinetic energy here drops your <i>${pName}</i>.`;
+            }
+            if (!isMissionMode) showToast(msg, 6000, isPrograde ? '#10b981' : '#ef4444');
+        }
+
+        let new_ek = (vel.x*vel.x + vel.y*vel.y) / 2;
+        let new_e = new_ek + ep;
+        const eScale = 50 / MAX_ENERGY_VISUAL; 
+        deltaE_Width = Math.abs(new_e - old_e) * eScale;
+        deltaE_Left = Math.max(0, Math.min(100, 50 + (Math.min(old_e, new_e) * eScale)));
+        deltaE_Opacity = 1.0;
+
+        scheduledBoost = null; updateUIState(); showMarkers = false; updateFeedbackLink();
+        satMat.color.setHex(0xffffff); setTimeout(() => satMat.color.setHex(0xf59e0b), 500); 
+    }
+
+    // --- UI Listeners ---
+    document.getElementById('tab-static').addEventListener('click', (e) => {
+        isDynamicSystem = false; isMissionMode = false; clearScriptedMission();
+        e.target.className = 'tab-btn active'; document.getElementById('tab-dynamic').className = 'tab-btn'; document.getElementById('tab-missions').className = 'tab-btn';
+        document.getElementById('manual-controls').style.display = 'block'; document.getElementById('mission-controls').style.display = 'none'; document.getElementById('edu-panel-container').style.display = 'block';
+        document.querySelector('.energy-section').style.display = 'block';
+        document.querySelector('#metrics .metric-grid').style.display = 'grid';
+        document.getElementById('toggle-moon').style.display = 'block';
+        moonOrbitLine.visible = false;
+        setSimulationModel(getManualModelFromUI(), false);
+        setSpeed(1.0); resetOrbit();
+        positionOverlayUi();
+        updateFeedbackLink();
+    });
+
+    document.getElementById('tab-dynamic').addEventListener('click', (e) => {
+        isDynamicSystem = true; isMissionMode = false; clearScriptedMission();
+        e.target.className = 'tab-btn active'; document.getElementById('tab-static').className = 'tab-btn'; document.getElementById('tab-missions').className = 'tab-btn';
+        document.getElementById('manual-controls').style.display = 'block'; document.getElementById('mission-controls').style.display = 'none'; document.getElementById('edu-panel-container').style.display = 'block';
+        document.querySelector('.energy-section').style.display = 'block';
+        document.querySelector('#metrics .metric-grid').style.display = 'grid';
+        document.getElementById('toggle-moon').style.display = 'none';
+        hasMoon = true; moon.visible = true; moonOrbitLine.visible = true;
+        setSimulationModel(getManualModelFromUI(), false);
+        setSpeed(1.0); resetOrbit();
+        positionOverlayUi();
+        updateFeedbackLink();
+    });
+
+    document.getElementById('tab-missions').addEventListener('click', (e) => {
+        isDynamicSystem = true; isMissionMode = true; clearScriptedMission();
+        e.target.className = 'tab-btn active'; document.getElementById('tab-static').className = 'tab-btn'; document.getElementById('tab-dynamic').className = 'tab-btn';
+        document.getElementById('manual-controls').style.display = 'none'; document.getElementById('mission-controls').style.display = 'block'; document.getElementById('edu-panel-container').style.display = 'none';
+        document.querySelector('.energy-section').style.display = 'none';
+        document.querySelector('#metrics .metric-grid').style.display = 'none';
+        selectedMissionId = null;
+        updateMissionPanels();
+        hasMoon = true; moon.visible = true; moonOrbitLine.visible = true;
+        setSimulationModel(HISTORICAL_MODEL, false);
+        setSpeed(1.0); resetOrbit();
+        parkMissionSpacecraft();
+        positionOverlayUi();
+        updateFeedbackLink();
+    });
+
+    document.getElementById('toggle-moon').addEventListener('click', (e) => {
+        hasMoon = !hasMoon; e.target.innerText = hasMoon ? 'System view: Earth–Moon' : 'System view: Earth only';
+        e.target.style.background = hasMoon ? '#047857' : '#3730a3'; moon.visible = hasMoon; updateSurfaces();
+        updateEduPanel();
+        if(hasMoon) showToast("<b>Earth-Moon System Engaged!</b><br>See if you can achieve a <i>Lunar Transfer Orbit (LTO)</i>. Try scheduling a massive Prograde burn at Earth Perigee for Trans-lunar injection (TLI).", 8000, '#8b5cf6');
+        updateFeedbackLink();
+    });
+
+    document.getElementById('toggle-crashes').addEventListener('click', (e) => {
+        collisionsEnabled = !collisionsEnabled; e.target.innerText = collisionsEnabled ? 'Collisions: ON' : 'Collisions: OFF';
+        e.target.style.background = collisionsEnabled ? '#047857' : '#9ca3af'; updateSurfaces();
+        updateFeedbackLink();
+    });
+
+    document.getElementById('toggle-radial').addEventListener('click', (e) => {
+        let container = document.getElementById('radial-container');
+        if (container.style.display === 'none') { container.style.display = 'block'; e.target.innerText = '- Hide Radial Burns'; } 
+        else { container.style.display = 'none'; e.target.innerText = '+ Advanced: Show Radial Burns'; }
+    });
+
+    document.getElementById('speed-slider').addEventListener('input', (e) => setSpeed(parseFloat(e.target.value)));
+    document.getElementById('mission-speed-slider').addEventListener('input', (e) => setSpeed(parseFloat(e.target.value)));
+
+    ['mass-ratio-slider', 'distance-ratio-slider', 'radius-ratio-slider'].forEach(id => {
+        document.getElementById(id).addEventListener('input', () => {
+            updateManualModelLabels();
+            if (!isMissionMode) applyManualModelFromUI();
+        });
+    });
+    document.getElementById('btn-real-mass').addEventListener('click', () => {
+        document.getElementById('mass-ratio-slider').value = REAL_MOON_MASS_RATIO;
+        updateManualModelLabels();
+        if (!isMissionMode) applyManualModelFromUI();
+    });
+    document.getElementById('btn-real-distance').addEventListener('click', () => {
+        document.getElementById('distance-ratio-slider').value = REAL_MOON_DISTANCE_RE;
+        updateManualModelLabels();
+        if (!isMissionMode) applyManualModelFromUI();
+    });
+    document.getElementById('btn-real-radius').addEventListener('click', () => {
+        document.getElementById('radius-ratio-slider').value = REAL_MOON_RADIUS_RATIO;
+        updateManualModelLabels();
+        if (!isMissionMode) applyManualModelFromUI();
+    });
+    document.getElementById('toggle-leo-suppression').addEventListener('change', (e) => {
+        leoMoonSuppression = e.target.checked;
+        updateSurfaces();
+        updateEduPanel();
+        updateFeedbackLink();
+    });
+
+    document.getElementById('palette-select').addEventListener('change', (e) => {
+        if (e.target.value === 'custom') return;
+        applyPalettePreset(e.target.value);
+    });
+    ['grid', 'earth', 'moon', 'satellite'].forEach(name => {
+        document.getElementById(`${name}-color`).addEventListener('input', () => {
+            document.getElementById('palette-select').value = 'custom';
+            applyPaletteState(getPaletteStateFromUi());
+        });
+        document.getElementById(`${name}-brightness`).addEventListener('input', () => {
+            document.getElementById(`${name}-brightness-val`).innerText = `${parseFloat(document.getElementById(`${name}-brightness`).value).toFixed(2)}×`;
+            document.getElementById('palette-select').value = 'custom';
+            applyPaletteState(getPaletteStateFromUi());
+        });
+    });
+
+    document.getElementById('radius-slider').addEventListener('input', (e) => { document.getElementById('radius-val').innerText = parseFloat(e.target.value).toFixed(1); });
+    document.getElementById('dv-slider').addEventListener('input', (e) => { 
+        deltaV = parseFloat(e.target.value); 
+        let sign = deltaV > 0 ? "+" : (deltaV === 0 ? "" : "");
+        document.getElementById('dv-val').innerText = sign + deltaV.toFixed(1); 
+        let lbl = document.getElementById('dv-type-lbl');
+        if (deltaV >= 0) { lbl.innerText = "Prograde"; lbl.className = "dv-type prograde-lbl"; } 
+        else { lbl.innerText = "Retrograde"; lbl.className = "dv-type retrograde-lbl"; }
+        updateFeedbackLink();
+    });
+    
+    document.getElementById('btn-reset').addEventListener('click', resetOrbit);
+    document.getElementById('btn-perigee').addEventListener('click', () => { scheduledBoost = scheduledBoost === 'perigee' ? null : 'perigee'; updateUIState(); updateFeedbackLink(); });
+    document.getElementById('btn-apogee').addEventListener('click', () => { scheduledBoost = scheduledBoost === 'apogee' ? null : 'apogee'; updateUIState(); updateFeedbackLink(); });
+    document.getElementById('btn-radial').addEventListener('click', () => { applyBoost('radial'); updateFeedbackLink(); });
+
+    function updateUIState() {
+        document.getElementById('btn-perigee').className = scheduledBoost === 'perigee' ? 'active' : '';
+        document.getElementById('btn-apogee').className = scheduledBoost === 'apogee' ? 'active' : '';
+    }
+    window.addEventListener('resize', () => { camera.aspect = window.innerWidth / window.innerHeight; camera.updateProjectionMatrix(); renderer.setSize(window.innerWidth, window.innerHeight); positionOverlayUi(); updateFeedbackLink(); });
+
+    document.getElementById('feedback-link').addEventListener('click', () => {
+        updateFeedbackLink();
+        if (!FEEDBACK_PREFILL_TEMPLATE_URL.trim() && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(buildFeedbackContextText())
+                .then(() => showToast('<b>Feedback context copied.</b><br>Paste it into the first form field if the form is not yet wired for automatic pre-fill.', 5200, '#60a5fa'))
+                .catch(() => {});
+        }
+    });
+
+    renderMissionButtons();
+    updateManualModelLabels();
+    setPaletteControls(PALETTE_PRESETS.classic);
+    applyPaletteState(getPaletteStateFromUi());
+    setSimulationModel(MANUAL_DEFAULT_MODEL);
+    ensureGridCoverage(true);
+    updateEduPanel();
+    updateSurfaces();
+    resetOrbit();
+    positionOverlayUi();
+    updateFeedbackLink();
+    animate();
+</script>
+</body>
+</html>
