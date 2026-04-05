@@ -487,7 +487,7 @@
         const radialShown = radialContainer && getComputedStyle(radialContainer).display !== 'none';
 
         const parts = [
-            `Version: v42`,
+            `Version: v43`,
             `Time: ${new Date().toISOString()}`,
             `Tab: ${getCurrentTabLabel()}`,
             `Status: ${statusBox ? statusBox.innerText.trim() : 'Unknown'}`,
@@ -536,15 +536,70 @@
             : 'Open feedback form. Current simulator context will also be copied to the clipboard.';
     }
 
+    function getBrowserName() {
+        const ua = navigator.userAgent || '';
+        if (/SamsungBrowser\//.test(ua)) return 'Samsung Internet';
+        if (/Edg\//.test(ua)) return 'Edge';
+        if (/OPR\//.test(ua) || /Opera/.test(ua)) return 'Opera';
+        if (/CriOS\//.test(ua)) return 'Chrome iOS';
+        if (/FxiOS\//.test(ua)) return 'Firefox iOS';
+        if (/Firefox\//.test(ua)) return 'Firefox';
+        if (/Chrome\//.test(ua)) return 'Chrome';
+        if (/Safari\//.test(ua) && !/Chrome\//.test(ua) && !/CriOS\//.test(ua)) return 'Safari';
+        return 'Unknown';
+    }
+
+    function getOsName() {
+        const ua = navigator.userAgent || '';
+        const platform = navigator.platform || '';
+        if (/Windows/i.test(ua)) return 'Windows';
+        if (/Android/i.test(ua)) return 'Android';
+        if (/iPhone|iPad|iPod/i.test(ua)) return 'iOS';
+        if (/Mac OS X/i.test(ua) || /Mac/i.test(platform)) return 'macOS';
+        if (/CrOS/i.test(ua)) return 'ChromeOS';
+        if (/Linux/i.test(ua)) return 'Linux';
+        return 'Unknown';
+    }
+
+    function getDeviceType() {
+        const ua = navigator.userAgent || '';
+        if (/iPad|Tablet/i.test(ua)) return 'tablet';
+        if (/Android/i.test(ua) && !/Mobile/i.test(ua)) return 'tablet';
+        if (/Mobi|iPhone|iPod/i.test(ua)) return 'phone';
+        if (navigator.userAgentData && typeof navigator.userAgentData.mobile === 'boolean') {
+            return navigator.userAgentData.mobile ? 'phone' : 'desktop';
+        }
+        return window.innerWidth <= 900 ? 'phone' : 'desktop';
+    }
+
+    function getCurrentViewMode() {
+        if (isMissionMode) return 'historical_missions';
+        if (isDynamicSystem) return 'dynamic';
+        return hasMoon ? 'static_earth_moon' : 'static_earth_only';
+    }
+
+    function emitViewModeEvent(entryPoint = 'unknown') {
+        trackAnalyticsEvent('simulator_view_mode', {
+            view_mode: getCurrentViewMode(),
+            entry_point: entryPoint
+        });
+    }
+
     function trackAnalyticsEvent(eventName, params = {}) {
         if (typeof gtag !== 'function') return;
         try {
             gtag('event', eventName, {
-                simulator_version: 'v42',
+                simulator_version: 'v43',
                 current_tab: getCurrentTabLabel(),
+                current_view_mode: getCurrentViewMode(),
                 selected_mission_id: selectedMissionId || 'none',
                 selected_mission_title: getSelectedMissionTitle(),
                 current_step: getSelectedMissionStepTitle(),
+                device_type: getDeviceType(),
+                browser_name: getBrowserName(),
+                os_name: getOsName(),
+                phone_layout: isPhoneLayout() ? 'yes' : 'no',
+                viewport_size: `${window.innerWidth}x${window.innerHeight}`,
                 ...params
             });
         } catch (err) {
@@ -636,6 +691,7 @@
         hideIntroOverlay();
         closeMobileSidebar();
         positionOverlayUi();
+        emitViewModeEvent('intro_card');
     }
 
     // --- Physics Constants & State ---
@@ -2312,6 +2368,7 @@
         setSpeed(1.0); resetOrbit();
         positionOverlayUi();
         updateFeedbackLink();
+        emitViewModeEvent('tab_click');
     });
 
     document.getElementById('tab-dynamic').addEventListener('click', (e) => {
@@ -2327,6 +2384,7 @@
         setSpeed(1.0); resetOrbit();
         positionOverlayUi();
         updateFeedbackLink();
+        emitViewModeEvent('tab_click');
     });
 
     document.getElementById('tab-missions').addEventListener('click', (e) => {
@@ -2344,6 +2402,7 @@
         parkMissionSpacecraft();
         positionOverlayUi();
         updateFeedbackLink();
+        emitViewModeEvent('tab_click');
     });
 
     document.getElementById('toggle-moon').addEventListener('click', (e) => {
@@ -2353,6 +2412,7 @@
         updateEduPanel();
         if(hasMoon) showToast("<b>Earth-Moon System Engaged!</b><br>See if you can achieve a <i>Lunar Transfer Orbit (LTO)</i>. Try scheduling a massive Prograde burn at Earth Perigee for Trans-lunar injection (TLI).", 8000, '#8b5cf6');
         updateFeedbackLink();
+        emitViewModeEvent('system_toggle');
     });
 
     document.getElementById('toggle-crashes').addEventListener('click', (e) => {
