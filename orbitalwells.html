@@ -367,20 +367,20 @@
         </div>
         <div class="palette-grid">
             <div class="palette-row">
-                <div class="palette-row-top"><label for="grid-color">Grid / well</label><input type="color" id="grid-color" value="#1e3a8a"></div>
-                <div class="palette-brightness"><input type="range" id="grid-brightness" min="0" max="2" step="0.05" value="1"><span id="grid-brightness-val">1.00×</span></div>
+                <div class="palette-row-top"><label for="grid-color">Grid / well</label><input type="color" id="grid-color" value="#3b82f6"></div>
+                <div class="palette-brightness"><input type="range" id="grid-brightness" min="0" max="2" step="0.05" value="1.25"><span id="grid-brightness-val">1.25×</span></div>
             </div>
             <div class="palette-row">
-                <div class="palette-row-top"><label for="earth-color">Earth</label><input type="color" id="earth-color" value="#10b981"></div>
-                <div class="palette-brightness"><input type="range" id="earth-brightness" min="0" max="2" step="0.05" value="1"><span id="earth-brightness-val">1.00×</span></div>
+                <div class="palette-row-top"><label for="earth-color">Earth</label><input type="color" id="earth-color" value="#34d399"></div>
+                <div class="palette-brightness"><input type="range" id="earth-brightness" min="0" max="2" step="0.05" value="1.1"><span id="earth-brightness-val">1.10×</span></div>
             </div>
             <div class="palette-row">
-                <div class="palette-row-top"><label for="moon-color">Moon</label><input type="color" id="moon-color" value="#a3a3a3"></div>
+                <div class="palette-row-top"><label for="moon-color">Moon</label><input type="color" id="moon-color" value="#e5e7eb"></div>
                 <div class="palette-brightness"><input type="range" id="moon-brightness" min="0" max="2" step="0.05" value="1"><span id="moon-brightness-val">1.00×</span></div>
             </div>
             <div class="palette-row">
-                <div class="palette-row-top"><label for="satellite-color">Spacecraft / trail</label><input type="color" id="satellite-color" value="#f59e0b"></div>
-                <div class="palette-brightness"><input type="range" id="satellite-brightness" min="0" max="2" step="0.05" value="1"><span id="satellite-brightness-val">1.00×</span></div>
+                <div class="palette-row-top"><label for="satellite-color">Spacecraft / trail</label><input type="color" id="satellite-color" value="#fbbf24"></div>
+                <div class="palette-brightness"><input type="range" id="satellite-brightness" min="0" max="2" step="0.05" value="1.1"><span id="satellite-brightness-val">1.10×</span></div>
             </div>
         </div>
     </details>
@@ -953,31 +953,31 @@
     // --- Visual Objects ---
     let geometry = new THREE.PlaneGeometry(360, 360, 200, 200);
     let currentGridSize = 360;
-    const material = new THREE.MeshBasicMaterial({ color: 0x1e3a8a, wireframe: true, transparent: true, opacity: 0.3 });
+    const material = new THREE.MeshBasicMaterial({ color: 0x3b82f6, wireframe: true, transparent: true, opacity: 0.4 });
     const wellMesh = new THREE.Mesh(geometry, material);
     scene.add(wellMesh);
 
-    const earthMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+    const earthMat = new THREE.MeshBasicMaterial({ color: 0x34d399 });
     const earth = new THREE.Mesh(new THREE.SphereGeometry(R_EARTH_COL, 32, 32), earthMat);
     scene.add(earth);
 
-    const satMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b });
+    const satMat = new THREE.MeshBasicMaterial({ color: 0xfbbf24 });
     const satellite = new THREE.Mesh(new THREE.SphereGeometry(1.2, 16, 16), satMat);
     scene.add(satellite);
 
     const trailGeo = new THREE.BufferGeometry();
-    const trailMat = new THREE.PointsMaterial({ color: 0xffcc00, size: 3, sizeAttenuation: false, opacity: 0.8, transparent: true });
+    const trailMat = new THREE.PointsMaterial({ color: 0xfbbf24, size: 3, sizeAttenuation: false, opacity: 0.8, transparent: true });
     const trailLine = new THREE.Points(trailGeo, trailMat);
     scene.add(trailLine);
 
-    const moonMat = new THREE.MeshBasicMaterial({ color: 0xa3a3a3 });
+    const moonMat = new THREE.MeshBasicMaterial({ color: 0xe5e7eb });
     const moon = new THREE.Mesh(new THREE.SphereGeometry(1, 16, 16), moonMat);
     moon.scale.set(R_MOON_COL, R_MOON_COL, R_MOON_COL);
     scene.add(moon);
     moon.visible = false;
 
     const moonOrbitGeo = new THREE.BufferGeometry();
-    const moonOrbitLine = new THREE.Line(moonOrbitGeo, new THREE.LineBasicMaterial({color: 0x475569, transparent: true, opacity: 0.5}));
+    const moonOrbitLine = new THREE.Line(moonOrbitGeo, new THREE.LineBasicMaterial({color: 0x60a5fa, transparent: true, opacity: 0.5}));
     scene.add(moonOrbitLine);
     moonOrbitLine.visible = false;
 
@@ -1006,7 +1006,7 @@
     }
 
     const PALETTE_PRESETS = {
-        classic: { grid: '#1e3a8a', gridBrightness: 1.0, earth: '#10b981', earthBrightness: 1.0, moon: '#a3a3a3', moonBrightness: 1.0, satellite: '#f59e0b', satelliteBrightness: 1.0 },
+        classic: { grid: '#3b82f6', gridBrightness: 1.25, earth: '#34d399', earthBrightness: 1.1, moon: '#e5e7eb', moonBrightness: 1.0, satellite: '#fbbf24', satelliteBrightness: 1.1 },
         midnight: { grid: '#1d4ed8', gridBrightness: 1.15, earth: '#22c55e', earthBrightness: 0.95, moon: '#cbd5e1', moonBrightness: 0.95, satellite: '#facc15', satelliteBrightness: 1.05 },
         soft: { grid: '#3b82f6', gridBrightness: 0.72, earth: '#34d399', earthBrightness: 0.82, moon: '#d4d4d8', moonBrightness: 0.82, satellite: '#fb923c', satelliteBrightness: 0.88 },
         highcontrast: { grid: '#60a5fa', gridBrightness: 1.5, earth: '#00ff99', earthBrightness: 1.2, moon: '#ffffff', moonBrightness: 1.1, satellite: '#ffb000', satelliteBrightness: 1.25 }
@@ -2454,7 +2454,7 @@
         deltaE_Opacity = 1.0;
 
         scheduledBoost = null; updateUIState(); showMarkers = false; updateFeedbackLink();
-        satMat.color.setHex(0xffffff); setTimeout(() => satMat.color.setHex(0xf59e0b), 500); 
+        satMat.color.setHex(0xffffff); setTimeout(() => applyPaletteState(getPaletteStateFromUi()), 500); 
     }
 
     // --- UI Listeners ---
