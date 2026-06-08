@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Circuit Builder — European Notation</title>
+<title>Circuit Simulator — V &amp; I calculator</title>
 <style>
   * { box-sizing: border-box; }
   body { font-family: -apple-system, Segoe UI, sans-serif; margin: 0; display: flex; height: 100vh; background: #f4f4f6; color: #222; }
@@ -27,6 +27,23 @@
   details td:first-child { font-family: ui-monospace, Consolas, monospace; color: #036; white-space: nowrap; }
   details h3 { font-size: 10.5px; font-weight: 600; color: #555; margin: 12px 0 2px; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid #e2e2e8; padding-bottom: 2px; }
   details h3:first-of-type { margin-top: 6px; }
+  .mode-btn { font-size: 11px; padding: 3px 8px; background: #fff; border: 1px solid #bbb; border-radius: 3px; cursor: pointer; font-family: inherit; }
+  .mode-btn.active { background: #036; color: #fff; border-color: #036; }
+  .sim-V text, .sim-I text { paint-order: stroke; stroke: #fff; stroke-width: 3; stroke-linejoin: round; }
+  .sim-V text { fill: #a00; }
+  .sim-I text { fill: #06a; }
+  .comp .comp-hit { pointer-events: all; }
+  /* Display modes */
+  .sim-mode-off .sim-V, .sim-mode-off .sim-I { display: none; }
+  .sim-mode-hover-i .sim-V { display: none; }
+  .sim-mode-hover-i .sim-I { opacity: 0; transition: opacity 0.12s; }
+  .sim-mode-hover-i .comp.hovered .sim-I { opacity: 1; }
+  .sim-mode-hover-v .sim-I { display: none; }
+  .sim-mode-hover-v .sim-V { opacity: 0; transition: opacity 0.12s; }
+  .sim-mode-hover-v .comp.hovered .sim-V { opacity: 1; }
+  .sim-mode-hover-both .sim-V, .sim-mode-hover-both .sim-I { opacity: 0; transition: opacity 0.12s; }
+  .sim-mode-hover-both .comp.hovered .sim-V, .sim-mode-hover-both .comp.hovered .sim-I { opacity: 1; }
+  .sim-mode-always .sim-V, .sim-mode-always .sim-I { opacity: 1; }
   .style-btn { font-size: 11px; padding: 3px 8px; background: #fff; border: 1px solid #bbb; border-radius: 3px; cursor: pointer; font-family: inherit; }
   .style-btn.active { background: #036; color: #fff; border-color: #036; }
   /* Style presets applied to the SVG root */
@@ -43,14 +60,27 @@
 </head>
 <body>
 <div id="left">
-  <h1>Circuit Builder <span style="font-weight: normal; color: #888; font-size: 12px;">— IEC / European symbols</span></h1>
-
+  <h1>Circuit Simulator <span style="font-weight: normal; color: #888; font-size: 12px;">— V &amp; I calculator</span></h1>
+  <div style="display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+    <button id="calc-btn" style="padding: 5px 14px; background: #036; color: #fff; border: 0; border-radius: 4px; font-size: 13px; cursor: pointer;">Calculate V &amp; I</button>
+    <button id="anim-btn" style="padding: 5px 14px; background: #a00; color: #fff; border: 0; border-radius: 4px; font-size: 13px; cursor: pointer;">Animate</button>
+    <span id="calc-status" style="font-size: 11px; color: #555;"></span>
+  </div>
   <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; font-size: 11px;">
     <span style="color: #555;">Style:</span>
     <button class="style-btn active" data-style="classic">Classic</button>
     <button class="style-btn" data-style="bold">Bold</button>
     <button class="style-btn" data-style="serif">Serif</button>
     <button class="style-btn" data-style="hand">Hand</button>
+  </div>
+
+  <div style="display: flex; gap: 4px; align-items: center; flex-wrap: wrap; font-size: 11px;">
+    <span style="color: #555;">Show on schematic:</span>
+    <button class="mode-btn" data-mode="off">Off</button>
+    <button class="mode-btn" data-mode="hover-i">I (hover)</button>
+    <button class="mode-btn" data-mode="hover-v">V (hover)</button>
+    <button class="mode-btn active" data-mode="hover-both">V &amp; I (hover)</button>
+    <button class="mode-btn" data-mode="always">Always</button>
   </div>
 
   <div class="help">
@@ -180,15 +210,22 @@
 
 <div id="right">
   <div id="svg-wrap"></div>
+  <div id="results-panel" style="margin-top: 10px; max-height: 240px; overflow: auto; font-size: 12px; background: #fff; border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
+    <div style="color: #555; font-size: 11px;">Click <b>Calculate V &amp; I</b> to solve the circuit.</div>
+  </div>
 </div>
 
 <script>
 //
-// ───── Tokenize / preprocess ─────────────────────────────────────────────
+// ───── Simulation state (declared early to avoid TDZ in render) ──────────
 //
-// Visual style preset for the SVG: 'classic' | 'bold' | 'serif' | 'hand'
+let _simResults = new Map();
+let _displayMode = 'hover-both';
 let _styleMode = 'classic';
 
+//
+// ───── Tokenize / preprocess ─────────────────────────────────────────────
+//
 function preprocess(text) {
   text = text.replace(/\/\/[^\n]*/g, '');
   let out = '', depth = 0;
@@ -1582,7 +1619,13 @@ function render(node, x, y, g, cr) {
     if (node.kind === 'pot' && node.bound) {
       return renderPotBound(node, x, y, g, cr);
     }
-    drawComponent(node, x, y, m.w, g, cr);
+    // Wrap in a labelled group so sim hover/labels can attach
+    const compG = svgEl('g', { class: 'comp' });
+    drawComponent(node, x, y, m.w, compG, cr);
+    if (_simResults && _simResults.has(node)) {
+      addSimLabels(compG, node, x, y, m.w, cr);
+    }
+    g.appendChild(compG);
     return x + m.w;
   }
   if (node.type === 'vacross') {
@@ -1720,7 +1763,7 @@ function renderOpenCircuit(ast) {
   const startX = pad;
   const y = pad + m.above;
 
-  const svg = svgEl('svg', { xmlns: 'http://www.w3.org/2000/svg', width: svgW, height: svgH, viewBox: `0 0 ${svgW} ${svgH}`, class: 'style-' + _styleMode });
+  const svg = svgEl('svg', { xmlns: 'http://www.w3.org/2000/svg', width: svgW, height: svgH, viewBox: `0 0 ${svgW} ${svgH}`, class: 'sim-mode-' + _displayMode + ' style-' + _styleMode });
   const defs = svgEl('defs');
   const marker = svgEl('marker', { id: 'arrowhead', viewBox: '0 0 10 10', refX: '8', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto-start-reverse' });
   marker.appendChild(svgEl('path', { d: 'M0,0 L10,5 L0,10 z', fill: '#222' }));
@@ -1757,7 +1800,7 @@ function renderCircuit(ast) {
   const loopTop = OUTER_PAD + out.t;
   const loopBottom = loopTop + innerH;
 
-  const svg = svgEl('svg', { xmlns: 'http://www.w3.org/2000/svg', width: svgW, height: svgH, viewBox: `0 0 ${svgW} ${svgH}`, class: 'style-' + _styleMode });
+  const svg = svgEl('svg', { xmlns: 'http://www.w3.org/2000/svg', width: svgW, height: svgH, viewBox: `0 0 ${svgW} ${svgH}`, class: 'sim-mode-' + _displayMode + ' style-' + _styleMode });
   const defs = svgEl('defs');
   const marker = svgEl('marker', { id: 'arrowhead', viewBox: '0 0 10 10', refX: '8', refY: '5', markerWidth: '6', markerHeight: '6', orient: 'auto-start-reverse' });
   marker.appendChild(svgEl('path', { d: 'M0,0 L10,5 L0,10 z', fill: '#222' }));
@@ -1871,6 +1914,298 @@ document.querySelectorAll('.examples button').forEach(b => {
   b.addEventListener('click', () => { codeEl.value = EXAMPLES[b.dataset.ex]; update(); });
 });
 
+update();
+
+//
+// ───── Simulation: Modified Nodal Analysis ───────────────────────────────
+//
+const POWER_KINDS = new Set(['cell', 'battery', 'varcell', 'varbattery', 'psdc', 'psac', 'solar']);
+const WIRE_LIKE  = new Set(['wire', 'earth', 'terminal', 'fuse']);
+
+function simResistance(n) {
+  switch (n.kind) {
+    case 'resistor': case 'varresistor': case 'thermistor': case 'ldr': case 'pot':
+      return n.value != null ? n.value * prefixMultiplier(n.valuePrefix) : 100;
+    case 'bulb':       return n.value != null ? n.value * prefixMultiplier(n.valuePrefix) : 10;
+    case 'switch':     return n.closed ? 1e-6 : 1e9;
+    case 'switch2':    return 1e-6;
+    case 'ammeter':    return n.resistance != null ? n.resistance * prefixMultiplier(n.resistancePrefix) : 1e-6;
+    case 'voltmeter':  return n.resistance != null ? n.resistance * prefixMultiplier(n.resistancePrefix) : 1e9;
+    case 'diode': case 'led': {
+      // Forward biased = on, reverse biased = off. triangleLeft (or reversed) tells us orientation.
+      const left = n.triangleLeft != null ? n.triangleLeft : !!n.reversed;
+      // If diode points right (left=false), forward current flows from-to (current is positive from→to)
+      // We don't know sign yet, so default to "on" — refined in second pass if needed.
+      return n._diodeOff ? 1e9 : 1e-6;
+    }
+    case 'heater':     return n.value != null ? n.value * prefixMultiplier(n.valuePrefix) : 20;
+    case 'motor': case 'generator': case 'buzzer': case 'speaker': case 'microphone':
+                       return n.value != null ? n.value * prefixMultiplier(n.valuePrefix) : 50;
+    default:           return 1e-6;
+  }
+}
+
+function simVoltage(n) {
+  const v = n.volts != null ? n.volts * prefixMultiplier(n.voltsPrefix) : null;
+  if (n.kind === 'cell' || n.kind === 'varcell') return (v != null ? v : 1.5) * (n.reversed ? -1 : 1);
+  if (n.kind === 'battery' || n.kind === 'varbattery') {
+    const cells = n.cells || 2;
+    return (v != null ? v : 1.5 * cells) * (n.reversed ? -1 : 1);
+  }
+  if (n.kind === 'psdc' || n.kind === 'psac') return v != null ? v : 12;
+  if (n.kind === 'solar') {
+    const cells = n.cells || 1;
+    return (v != null ? v : 0.5 * cells) * (n.reversed ? -1 : 1);
+  }
+  return 0;
+}
+
+function prefixMultiplier(p) {
+  switch (p) {
+    case 'p': return 1e-12;
+    case 'n': return 1e-9;
+    case 'µ': return 1e-6;
+    case 'm': return 1e-3;
+    case 'k': return 1e3;
+    case 'M': return 1e6;
+    case 'G': return 1e9;
+    default:  return 1;
+  }
+}
+
+function buildElectricalGraph(ast) {
+  let nodeCounter = 0;
+  const newNode = () => nodeCounter++;
+  const branches = [];   // each: { node, kind, from, to, label }
+
+  function process(node, a, b) {
+    if (!node) return;
+    if (node.type === 'component') {
+      branches.push({ node, kind: node.kind, from: a, to: b });
+      return;
+    }
+    if (node.type === 'series') {
+      const kids = node.children;
+      if (kids.length === 0) return;
+      if (kids.length === 1) { process(kids[0], a, b); return; }
+      let prev = a;
+      for (let i = 0; i < kids.length; i++) {
+        const next = (i === kids.length - 1) ? b : newNode();
+        process(kids[i], prev, next);
+        prev = next;
+      }
+      return;
+    }
+    if (node.type === 'parallel') {
+      for (const br of node.children) process(br, a, b);
+      return;
+    }
+    if (node.type === 'vacross') {
+      process(node.child, a, b);
+      // Implicit ideal voltmeter as a parallel branch
+      branches.push({ node: { kind: 'voltmeter', resistance: 1e9, _implicit: true }, kind: 'voltmeter', from: a, to: b, implicit: true });
+      return;
+    }
+    // wmark, etc. — no electrical effect
+  }
+
+  const open = isOpenCircuit(ast);
+  if (open) {
+    const A = newNode(), B = newNode();
+    process(ast, A, B);
+  } else {
+    const ground = newNode();
+    process(ast, ground, ground);
+  }
+  return { branches, numNodes: nodeCounter };
+}
+
+function solveLinearSystem(A, b) {
+  const n = A.length;
+  const M = A.map((row, i) => row.concat([b[i]]));
+  for (let p = 0; p < n; p++) {
+    let maxRow = p, max = Math.abs(M[p][p]);
+    for (let i = p + 1; i < n; i++) {
+      if (Math.abs(M[i][p]) > max) { max = Math.abs(M[i][p]); maxRow = i; }
+    }
+    if (max < 1e-15) throw new Error('Singular matrix (circuit may be incomplete)');
+    [M[p], M[maxRow]] = [M[maxRow], M[p]];
+    for (let i = p + 1; i < n; i++) {
+      const f = M[i][p] / M[p][p];
+      for (let j = p; j <= n; j++) M[i][j] -= f * M[p][j];
+    }
+  }
+  const x = new Array(n).fill(0);
+  for (let i = n - 1; i >= 0; i--) {
+    let s = M[i][n];
+    for (let j = i + 1; j < n; j++) s -= M[i][j] * x[j];
+    x[i] = s / M[i][i];
+  }
+  return x;
+}
+
+function solveCircuit(graph) {
+  const { branches, numNodes } = graph;
+  if (numNodes === 0) return null;
+  const vSources = branches.filter(b => POWER_KINDS.has(b.kind));
+  const ground = 0;
+  const nVars = (numNodes - 1) + vSources.length;
+  if (nVars === 0) return { V: [0], branchData: [] };
+
+  const A = Array.from({ length: nVars }, () => new Array(nVars).fill(0));
+  const rhs = new Array(nVars).fill(0);
+  const idx = node => node === ground ? -1 : node - 1;
+
+  for (const br of branches) {
+    if (POWER_KINDS.has(br.kind)) continue;
+    const g = 1 / simResistance(br.node);
+    const i = idx(br.from), j = idx(br.to);
+    if (i >= 0) A[i][i] += g;
+    if (j >= 0) A[j][j] += g;
+    if (i >= 0 && j >= 0) { A[i][j] -= g; A[j][i] -= g; }
+  }
+  for (let k = 0; k < vSources.length; k++) {
+    const vs = vSources[k];
+    const V = simVoltage(vs.node);
+    const i = idx(vs.from), j = idx(vs.to);
+    const row = (numNodes - 1) + k;
+    if (i >= 0) { A[i][row] = +1; A[row][i] = +1; }
+    if (j >= 0) { A[j][row] = -1; A[row][j] = -1; }
+    rhs[row] = V;
+  }
+  const x = solveLinearSystem(A, rhs);
+  const V = new Array(numNodes).fill(0);
+  for (let n = 1; n < numNodes; n++) V[n] = x[n - 1];
+
+  const branchData = branches.map((br, i) => {
+    let I;
+    if (POWER_KINDS.has(br.kind)) {
+      const k = vSources.indexOf(br);
+      I = x[(numNodes - 1) + k];
+    } else {
+      I = (V[br.from] - V[br.to]) / simResistance(br.node);
+    }
+    const dv = V[br.from] - V[br.to];
+    return { node: br.node, kind: br.kind, from: br.from, to: br.to, V: dv, I, implicit: !!br.implicit };
+  });
+  return { V, branchData };
+}
+
+function formatSI(value, unit) {
+  if (value == null || !isFinite(value)) return '—';
+  const a = Math.abs(value);
+  let scaled = value, pre = '';
+  if (a >= 1e6)  { scaled = value / 1e6;  pre = 'M'; }
+  else if (a >= 1e3)  { scaled = value / 1e3;  pre = 'k'; }
+  else if (a >= 1)    { scaled = value;        pre = '';  }
+  else if (a >= 1e-3) { scaled = value * 1e3;  pre = 'm'; }
+  else if (a >= 1e-6) { scaled = value * 1e6;  pre = 'µ'; }
+  else if (a !== 0)   { scaled = value * 1e9;  pre = 'n'; }
+  const s = Math.abs(scaled) >= 100 ? scaled.toFixed(0)
+          : Math.abs(scaled) >= 10  ? scaled.toFixed(1)
+          : scaled.toFixed(2);
+  return s + ' ' + pre + unit;
+}
+
+function componentDisplayName(n, idx) {
+  const PREFIX = LABEL_PREFIX[n.kind] || '';
+  const KIND_NAME = {
+    cell: 'cell', battery: 'battery', varcell: 'var. cell', varbattery: 'var. battery',
+    solar: 'solar cell',
+    psdc: 'DC supply', psac: 'AC supply',
+    resistor: 'resistor', varresistor: 'var. resistor', pot: 'potentiometer',
+    bulb: 'bulb', thermistor: 'thermistor', ldr: 'LDR', fuse: 'fuse',
+    switch: 'switch', switch2: 'two-way switch',
+    ammeter: 'ammeter', voltmeter: 'voltmeter',
+    diode: 'diode', led: 'LED',
+    heater: 'heater', motor: 'motor', generator: 'generator',
+    earth: 'earth', wire: 'wire', terminal: 'terminal',
+    buzzer: 'bell', speaker: 'speaker', microphone: 'microphone',
+    transformer: 'transformer',
+  };
+  let label = KIND_NAME[n.kind] || n.kind;
+  if (n.subscript != null) {
+    if (n.subscript.startsWith('.')) {
+      const raw = n.subscript.substring(1);
+      if (raw) label = raw.toUpperCase();
+    } else if (PREFIX) {
+      label = PREFIX + toSub(n.subscript);
+    }
+  } else if (PREFIX && idx != null) {
+    // Disambiguate when there's no explicit label
+    label = label + ' #' + (idx + 1);
+  }
+  return label;
+}
+
+function renderResults(result) {
+  const panel = document.getElementById('results-panel');
+  if (!result || !result.branchData || result.branchData.length === 0) {
+    panel.innerHTML = '<div style="color:#b00;">No components to solve.</div>';
+    return;
+  }
+  let html = '<table style="width:100%; border-collapse: collapse;">';
+  html += '<thead><tr style="background:#f4f4f6;"><th style="text-align:left; padding:4px 6px; border-bottom:1px solid #ddd;">Component</th>';
+  html += '<th style="text-align:right; padding:4px 6px; border-bottom:1px solid #ddd;">V across</th>';
+  html += '<th style="text-align:right; padding:4px 6px; border-bottom:1px solid #ddd;">I through</th></tr></thead><tbody>';
+  // Count per kind for disambiguation
+  const kindCount = {};
+  for (const br of result.branchData) {
+    if (br.implicit) continue;
+    kindCount[br.kind] = (kindCount[br.kind] || 0) + 1;
+  }
+  const kindSeen = {};
+  for (const br of result.branchData) {
+    if (br.implicit) continue;
+    kindSeen[br.kind] = (kindSeen[br.kind] || 0);
+    const idx = kindCount[br.kind] > 1 ? kindSeen[br.kind] : null;
+    kindSeen[br.kind]++;
+    const name = componentDisplayName(br.node, idx);
+    html += '<tr>';
+    html += '<td style="padding:3px 6px;">' + name + '</td>';
+    html += '<td style="padding:3px 6px; text-align:right; font-family:ui-monospace,Consolas,monospace;">' + formatSI(Math.abs(br.V), 'V') + '</td>';
+    html += '<td style="padding:3px 6px; text-align:right; font-family:ui-monospace,Consolas,monospace;">' + formatSI(Math.abs(br.I), 'A') + '</td>';
+    html += '</tr>';
+  }
+  html += '</tbody></table>';
+  panel.innerHTML = html;
+}
+
+// Sim-results storage + display mode (declared at top of script)
+function addSimLabels(compG, node, x, y, w, cr) {
+  const r = _simResults.get(node);
+  if (!r) return;
+  const cx = x + w / 2;
+  // Hover hit-area
+  const hit = svgEl('rect', {
+    x: x - 4, y: y - 32, width: w + 8, height: 64,
+    fill: 'transparent', class: 'comp-hit'
+  });
+  hit.style.pointerEvents = 'all';
+  compG.appendChild(hit);
+  const Vg = svgEl('g', { class: 'sim-V' });
+  Vg.appendChild(uprightText(cx, y - 26, formatSI(Math.abs(r.V), 'V'), { size: 10 }, cr));
+  compG.appendChild(Vg);
+  const Ig = svgEl('g', { class: 'sim-I' });
+  Ig.appendChild(uprightText(cx, y + 30, formatSI(Math.abs(r.I), 'A'), { size: 10 }, cr));
+  compG.appendChild(Ig);
+  // Explicit hover handlers — more reliable than SVG <g>:hover across browsers
+  hit.addEventListener('mouseenter', () => compG.classList.add('hovered'));
+  hit.addEventListener('mouseleave', () => compG.classList.remove('hovered'));
+}
+
+// Clear sim results whenever the source text changes
+codeEl.addEventListener('input', () => {
+  if (_simResults.size) { _simResults.clear(); }
+});
+
+document.querySelectorAll('.mode-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    _displayMode = b.dataset.mode;
+    document.querySelectorAll('.mode-btn').forEach(x => x.classList.toggle('active', x.dataset.mode === _displayMode));
+    update();
+  });
+});
 document.querySelectorAll('.style-btn').forEach(b => {
   b.addEventListener('click', () => {
     _styleMode = b.dataset.style;
@@ -1879,7 +2214,328 @@ document.querySelectorAll('.style-btn').forEach(b => {
   });
 });
 
-update();
+//
+// ───── Animation: Furry-Elephant style red energy blobs ──────────────────
+//
+const _anim = {
+  running: false,
+  raf: null,
+  layer: null,
+  blobs: [],
+  // For each electrical branch (non-implicit), a { kind, node, from, to, V, I, cx, cy, w, h } record
+  branches: [],
+  // electrical node id -> {x, y}
+  nodes: new Map(),
+  // node id -> array of branch indices touching it
+  nodeBranches: new Map(),
+  vScale: 6,       // max V — used to scale blob radii
+  lastTime: 0,
+  spawnAcc: new Map(),  // branch idx -> accumulator for blob spawn fractional count
+  blobIdCounter: 0,
+};
+
+function svgPoint(svg, x, y) {
+  const pt = svg.createSVGPoint();
+  pt.x = x; pt.y = y;
+  return pt;
+}
+
+function buildAnimGraph() {
+  const svg = document.querySelector('#svg-wrap svg');
+  if (!svg) return false;
+  let result;
+  try {
+    const ast = parse(codeEl.value);
+    if (isEmpty(ast)) return false;
+    applyChevronAutoDir(ast);
+    const graph = buildElectricalGraph(ast);
+    result = solveCircuit(graph);
+  } catch (e) {
+    console.error(e);
+    return false;
+  }
+  if (!result) return false;
+
+  // Map each non-implicit branch to its on-screen <g class="comp">.
+  // Render order of comp elements matches the AST traversal order of components,
+  // and electrical branches share that ordering (implicit voltmeters are appended
+  // after their wrapped child).
+  const compGs = Array.from(svg.querySelectorAll('g.comp'));
+  const branches = [];
+  let compIdx = 0;
+  for (const br of result.branchData) {
+    if (br.implicit) continue;
+    const g = compGs[compIdx];
+    compIdx++;
+    if (!g) continue;
+    let bbox, ctm;
+    try { bbox = g.getBBox(); ctm = g.getCTM(); } catch (e) { continue; }
+    if (!ctm) continue;
+    const center = svgPoint(svg, bbox.x + bbox.width / 2, bbox.y + bbox.height / 2).matrixTransform(ctm);
+    branches.push({
+      kind: br.kind, node: br.node,
+      from: br.from, to: br.to,
+      V: br.V, I: br.I,
+      cx: center.x, cy: center.y,
+      w: bbox.width, h: bbox.height,
+    });
+  }
+  if (!branches.length) return false;
+
+  // Compute a position for each electrical node as the centroid of branch centers touching it.
+  const nodes = new Map();
+  const nodeBranches = new Map();
+  for (let i = 0; i < branches.length; i++) {
+    const br = branches[i];
+    [br.from, br.to].forEach(nid => {
+      if (!nodes.has(nid)) nodes.set(nid, { sx: 0, sy: 0, n: 0 });
+      const e = nodes.get(nid);
+      e.sx += br.cx; e.sy += br.cy; e.n++;
+      if (!nodeBranches.has(nid)) nodeBranches.set(nid, []);
+      nodeBranches.get(nid).push(i);
+    });
+  }
+  for (const [, e] of nodes) { e.x = e.sx / e.n; e.y = e.sy / e.n; }
+
+  // Use the largest battery V to scale blob radii (energy-remaining)
+  let vScale = 1;
+  for (const br of branches) {
+    if (POWER_KINDS.has(br.kind)) vScale = Math.max(vScale, Math.abs(br.V));
+  }
+
+  _anim.branches = branches;
+  _anim.nodes = nodes;
+  _anim.nodeBranches = nodeBranches;
+  _anim.vScale = vScale;
+  _anim.spawnAcc = new Map();
+  _anim.blobs = [];
+  _anim.blobIdCounter = 0;
+  return true;
+}
+
+function ensureAnimLayer() {
+  const svg = document.querySelector('#svg-wrap svg');
+  if (!svg) return null;
+  let layer = svg.querySelector('#anim-layer');
+  if (!layer) {
+    layer = svgEl('g', { id: 'anim-layer' });
+    svg.appendChild(layer);
+  } else {
+    while (layer.firstChild) layer.removeChild(layer.firstChild);
+  }
+  _anim.layer = layer;
+  return layer;
+}
+
+function startAnimation() {
+  if (_simResults.size === 0) {
+    // Try to solve first
+    try { document.getElementById('calc-btn').click(); }
+    catch (e) {}
+  }
+  if (!buildAnimGraph()) return;
+  if (!ensureAnimLayer()) return;
+  _anim.running = true;
+  _anim.lastTime = performance.now();
+  document.getElementById('anim-btn').textContent = 'Stop animation';
+  document.getElementById('anim-btn').style.background = '#444';
+  _anim.raf = requestAnimationFrame(animFrame);
+}
+
+function stopAnimation() {
+  _anim.running = false;
+  if (_anim.raf) cancelAnimationFrame(_anim.raf);
+  _anim.raf = null;
+  if (_anim.layer && _anim.layer.parentNode) _anim.layer.parentNode.removeChild(_anim.layer);
+  _anim.layer = null;
+  _anim.blobs = [];
+  document.getElementById('anim-btn').textContent = 'Animate';
+  document.getElementById('anim-btn').style.background = '#a00';
+}
+
+// Speed and spawn tuning. Pick a baseline so that even tiny currents are readable.
+const ANIM_PIXELS_PER_AMP_PER_SEC = 60;
+const ANIM_BASE_SPEED_PX_PER_SEC  = 30; // minimum readable speed
+const ANIM_SPAWN_PER_AMP_PER_SEC  = 8;
+const ANIM_BASE_SPAWN_PER_SEC     = 1.5;
+const ANIM_MIN_BLOB_R = 1.5;
+const ANIM_MAX_BLOB_R = 8;
+
+function speedFor(I) {
+  return ANIM_BASE_SPEED_PX_PER_SEC + ANIM_PIXELS_PER_AMP_PER_SEC * Math.abs(I);
+}
+function spawnRateFor(I) {
+  return ANIM_BASE_SPAWN_PER_SEC + ANIM_SPAWN_PER_AMP_PER_SEC * Math.abs(I);
+}
+function radiusForEnergy(E) {
+  const frac = Math.max(0, Math.min(1, Math.abs(E) / _anim.vScale));
+  return ANIM_MIN_BLOB_R + (ANIM_MAX_BLOB_R - ANIM_MIN_BLOB_R) * frac;
+}
+
+function spawnBlob(branchIdx, atFromOrTo) {
+  const br = _anim.branches[branchIdx];
+  const fromNode = atFromOrTo === 'from' ? br.from : br.to;
+  const toNode   = atFromOrTo === 'from' ? br.to   : br.from;
+  const pFrom = _anim.nodes.get(fromNode);
+  const pTo   = _anim.nodes.get(toNode);
+  if (!pFrom || !pTo) return;
+  // Initial energy = V_battery (the magnitude of the source V)
+  const energy = Math.abs(br.V);
+  _anim.blobs.push({
+    id: ++_anim.blobIdCounter,
+    branchIdx,
+    fromNode, toNode,
+    progress: 0,  // 0 at fromNode, 1 at toNode
+    energy,
+    initialEnergy: energy,
+    el: null,
+  });
+}
+
+// Pick the outgoing branch from a node given a "no go back" constraint.
+// Weight by abs(I) of branches that actually carry current AWAY from this node.
+function pickNextBranch(node, fromBranchIdx) {
+  const cands = _anim.nodeBranches.get(node) || [];
+  const weighted = [];
+  let total = 0;
+  for (const idx of cands) {
+    if (idx === fromBranchIdx) continue;
+    const br = _anim.branches[idx];
+    // Determine direction: blob arrives at `node`. It then leaves `node` into the new branch.
+    // If new branch's from==node and current is positive, blob flows from→to (natural).
+    // If new branch's to==node and current is negative, blob flows to→from.
+    let exitDir = null;
+    if (br.from === node && br.I > 0) exitDir = 'forward';
+    else if (br.to === node && br.I < 0) exitDir = 'backward';
+    if (!exitDir) continue;
+    const w = Math.abs(br.I);
+    if (w < 1e-12) continue;
+    weighted.push({ idx, exitDir, w });
+    total += w;
+  }
+  if (!weighted.length) return null;
+  let r = Math.random() * total;
+  for (const e of weighted) {
+    r -= e.w;
+    if (r <= 0) return e;
+  }
+  return weighted[weighted.length - 1];
+}
+
+function animFrame(now) {
+  if (!_anim.running) return;
+  const dt = Math.min(0.05, (now - _anim.lastTime) / 1000);
+  _anim.lastTime = now;
+
+  // Spawn blobs from voltage sources
+  for (let i = 0; i < _anim.branches.length; i++) {
+    const br = _anim.branches[i];
+    if (!POWER_KINDS.has(br.kind)) continue;
+    if (Math.abs(br.I) < 1e-9) continue;
+    const rate = spawnRateFor(br.I);
+    const acc = (_anim.spawnAcc.get(i) || 0) + rate * dt;
+    const n = Math.floor(acc);
+    _anim.spawnAcc.set(i, acc - n);
+    for (let k = 0; k < n; k++) {
+      // Spawn at the + terminal, which (by convention in builder) is "from" for default and "to" for reversed
+      const atFromOrTo = (br.I > 0) ? 'from' : 'to';
+      spawnBlob(i, atFromOrTo);
+    }
+  }
+
+  // Update each blob
+  const surviving = [];
+  for (const blob of _anim.blobs) {
+    const br = _anim.branches[blob.branchIdx];
+    const speed = speedFor(br.I);
+    const pFrom = _anim.nodes.get(blob.fromNode);
+    const pTo   = _anim.nodes.get(blob.toNode);
+    if (!pFrom || !pTo) { if (blob.el) blob.el.remove(); continue; }
+    const segLen = Math.max(1, Math.hypot(pTo.x - pFrom.x, pTo.y - pFrom.y));
+    const advance = (speed * dt) / segLen;
+    blob.progress += advance;
+
+    // Energy change: linear with progress through the branch
+    // For a power source going + → −  (the natural direction of current), the blob GAINS energy
+    // crossing the source body. For passive components it LOSES energy proportional to |V|.
+    const isSrc = POWER_KINDS.has(br.kind);
+    const dE = Math.abs(br.V) * advance * (isSrc ? +1 : -1);
+    blob.energy += dE;
+
+    if (blob.progress >= 1) {
+      // Arrived at toNode. Try to continue into another branch.
+      const next = pickNextBranch(blob.toNode, blob.branchIdx);
+      if (!next) {
+        if (blob.el) blob.el.remove();
+        continue;
+      }
+      const nextBr = _anim.branches[next.idx];
+      blob.branchIdx = next.idx;
+      if (next.exitDir === 'forward') { blob.fromNode = nextBr.from; blob.toNode = nextBr.to; }
+      else { blob.fromNode = nextBr.to; blob.toNode = nextBr.from; }
+      blob.progress = 0;
+      // If energy went out of bounds, clamp to source range
+      if (blob.energy < 0) blob.energy = 0;
+      if (blob.energy > _anim.vScale * 1.05) blob.energy = _anim.vScale;
+    }
+
+    // Render
+    if (!blob.el) {
+      blob.el = svgEl('circle', { r: ANIM_MIN_BLOB_R, fill: '#d22', opacity: 0.85 });
+      _anim.layer.appendChild(blob.el);
+    }
+    const cx = pFrom.x + (pTo.x - pFrom.x) * blob.progress;
+    const cy = pFrom.y + (pTo.y - pFrom.y) * blob.progress;
+    blob.el.setAttribute('cx', cx);
+    blob.el.setAttribute('cy', cy);
+    blob.el.setAttribute('r', radiusForEnergy(blob.energy));
+    surviving.push(blob);
+  }
+  _anim.blobs = surviving;
+
+  // Cap total blob count to keep the page responsive
+  if (_anim.blobs.length > 400) {
+    const excess = _anim.blobs.length - 400;
+    for (let k = 0; k < excess; k++) {
+      const b = _anim.blobs.shift();
+      if (b.el) b.el.remove();
+    }
+  }
+
+  _anim.raf = requestAnimationFrame(animFrame);
+}
+
+document.getElementById('anim-btn').addEventListener('click', () => {
+  if (_anim.running) stopAnimation();
+  else startAnimation();
+});
+
+// Stop animation whenever the source changes or the schematic is redrawn
+codeEl.addEventListener('input', () => {
+  if (_anim.running) stopAnimation();
+});
+
+document.getElementById('calc-btn').addEventListener('click', () => {
+  const status = document.getElementById('calc-status');
+  status.textContent = '';
+  try {
+    const ast = parse(codeEl.value);
+    if (isEmpty(ast)) { status.textContent = 'Empty circuit.'; _simResults.clear(); update(); return; }
+    applyChevronAutoDir(ast);
+    const graph = buildElectricalGraph(ast);
+    const result = solveCircuit(graph);
+    _simResults.clear();
+    for (const br of result.branchData) {
+      if (!br.implicit) _simResults.set(br.node, { V: br.V, I: br.I });
+    }
+    update();   // re-render with V/I labels attached
+    renderResults(result);
+    status.textContent = 'Solved · ' + result.branchData.filter(b => !b.implicit).length + ' components';
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+    document.getElementById('results-panel').innerHTML = '<div style="color:#b00;">' + e.message + '</div>';
+  }
+});
 </script>
 </body>
 </html>
