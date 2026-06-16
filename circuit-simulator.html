@@ -141,6 +141,7 @@
       <tr><td>b &nbsp;·&nbsp; Nb</td><td>alias for cb &nbsp;·&nbsp; Ncb</td></tr>
       <tr><td>vc &nbsp;·&nbsp; vb &nbsp;·&nbsp; Nvb</td><td>variable cell &nbsp;·&nbsp; variable battery (with diagonal arrow)</td></tr>
       <tr><td>pv &nbsp;·&nbsp; Npv</td><td>solar cell (photovoltaic) — incoming-photon arrows; default 0.5 V per cell</td></tr>
+      <tr><td>cir</td><td>cell with internal resistance — small cell + small resistor in a dashed box; labels via args: <code>6V</code>, <code>0.1ohm</code>, <code>E</code>, <code>r</code>, or any combination</td></tr>
       <tr><td>pdc &nbsp;·&nbsp; pac</td><td>DC &nbsp;·&nbsp; AC power supply</td></tr>
       <tr><td>tr</td><td>transformer — defaults to right wall, draws its own load loop</td></tr>
     </table>
@@ -312,6 +313,7 @@ const SHORT_CODES = {
   vb:  { kind: 'varbattery' },
   vcb: { kind: 'varbattery' },
   pv:  { kind: 'solar' },
+  cir: { kind: 'cir' },
   o:   { kind: 'terminal' },
   term:{ kind: 'terminal' },
 };
@@ -335,6 +337,7 @@ const LONG_NAMES = {
   potentiometer: 'pot', pot: 'pot',
   varcell: 'varcell', varbattery: 'varbattery',
   solar: 'solar', solarcell: 'solar', photovoltaic: 'solar', pvcell: 'solar',
+  cir: 'cir', realcell: 'cir', cellinternalresistance: 'cir',
 };
 const SKIP_WORDS = new Set(['cells', 'cell', 'ohms', 'ohm', 'volts', 'volt', 'v', 'amps', 'amp', 'a']);
 
@@ -406,6 +409,14 @@ function resolveComponent(word, args) {
   function assignNumeric(num, suffix) {
     const u = parseValueSuffix(suffix || '');
     const isPower = kind === 'cell' || kind === 'battery' || kind === 'varcell' || kind === 'varbattery' || kind === 'solar';
+    if (kind === 'cir') {
+      if (u.baseUnit === 'ohm' || u.baseUnit === 'ohms' || u.baseUnit === 'r') {
+        comp.intResistance = num; comp.intResistancePrefix = u.prefixDisplay;
+      } else {
+        comp.emf = num; comp.emfPrefix = u.prefixDisplay;
+      }
+      return;
+    }
     if (u.baseUnit === 'v') {
       if (kind === 'voltmeter') { comp.value = num; comp.valuePrefix = u.prefixDisplay; }
       else if (isPower)         { comp.volts = num; comp.voltsPrefix = u.prefixDisplay; }
@@ -437,6 +448,8 @@ function resolveComponent(word, args) {
     else if (a === 'pm' || a === 'polarity') comp.showPolarity = true;
     else if (a === 'fat' || a === 'thick') comp.fat = true;
     else if (a === 'wiggle' || a === 'wiggly') comp.wiggle = true;
+    else if (kind === 'cir' && (a === 'e' || a === 'epsilon' || a === 'eps')) comp.showEpsilon = true;
+    else if (kind === 'cir' && a === 'r') comp.showR = true;
     else if (SKIP_WORDS.has(a)) continue;
     else {
       const mm = aRaw.match(/^(\d+(?:\.\d+)?)([A-Za-zµμ]*)$/);  // preserve case for prefix
@@ -454,7 +467,7 @@ let _orientation = 'vertical'; // 'vertical' = battery top, components bottom; '
 function defaultWall(atom) {
   if (atom.type === 'component') {
     const k = atom.kind;
-    const isPower = (k === 'cell' || k === 'battery' || k === 'varcell' || k === 'varbattery' || k === 'psdc' || k === 'psac' || k === 'solar');
+    const isPower = (k === 'cell' || k === 'battery' || k === 'varcell' || k === 'varbattery' || k === 'psdc' || k === 'psac' || k === 'solar' || k === 'cir');
     if (_orientation === 'horizontal') {
       if (isPower) return 'l';
       if (k === 'transformer') return 'r';
@@ -643,6 +656,7 @@ function componentWidth(node) {
       const n = Math.max(1, Math.floor(node.cells || 1));
       return n === 1 ? 38 : 14 + 9 * n;
     }
+    case 'cir':        return 76;
     case 'switch':     return 54;
     case 'switch2':    return 60;
     case 'resistor':   return 60;
@@ -722,6 +736,7 @@ function measure(node) {
     if ((node.kind === 'cell' || node.kind === 'battery') && node.showPolarity) below = 28;
     if (node.kind === 'varcell' || node.kind === 'varbattery') { above = 18; below = node.showPolarity ? 30 : 18; }
     if (node.kind === 'solar') { above = 38; below = 38; }
+    if (node.kind === 'cir') { above = 28; below = 18; }
     if (node.kind === 'earth') below = 24;
     if (node.kind === 'transformer') below = 110;
     if (node.kind === 'speaker') above = 26;
@@ -1277,6 +1292,45 @@ function drawComponent(node, x, y, w, g, cr) {
       a2.setAttribute('marker-end', 'url(#arrowhead)');
       a2.setAttribute('stroke-width', 1.2);
       g.appendChild(a2);
+      break;
+    }
+
+    case 'cir': {
+      // Cell with internal resistance: small cell + small resistor inside a dashed box
+      const boxLeft = x + 8;
+      const boxRight = x + w - 8;
+      const boxTop = y - 14;
+      const boxBot = y + 14;
+      g.appendChild(line(x, y, boxLeft, y));
+      g.appendChild(line(boxRight, y, x + w, y));
+      const cellLongX  = boxLeft + 5;
+      const cellShortX = cellLongX + 5;
+      const resStartX  = cellShortX + 8;
+      const resEndX    = boxRight - 6;
+      const resH = 8;
+      g.appendChild(line(boxLeft, y, cellLongX - 2, y));
+      g.appendChild(line(cellLongX + 2, y, cellShortX - 2, y));
+      g.appendChild(line(cellShortX + 2, y, resStartX, y));
+      g.appendChild(line(resEndX, y, boxRight, y));
+      g.appendChild(line(cellLongX, y - 9, cellLongX, y + 9));
+      g.appendChild(line(cellShortX, y - 5, cellShortX, y + 5));
+      g.appendChild(rect(resStartX, y - resH / 2, resEndX - resStartX, resH));
+      g.appendChild(svgEl('rect', {
+        x: boxLeft, y: boxTop,
+        width: boxRight - boxLeft, height: boxBot - boxTop,
+        fill: 'none', stroke: '#222', 'stroke-width': 1.3,
+        'stroke-dasharray': '3,2'
+      }));
+      let cellLabel = '';
+      if (node.showEpsilon && node.emf != null) cellLabel = 'ε = ' + node.emf + ' ' + (node.emfPrefix || '') + 'V';
+      else if (node.showEpsilon) cellLabel = 'ε';
+      else if (node.emf != null) cellLabel = node.emf + ' ' + (node.emfPrefix || '') + 'V';
+      if (cellLabel) g.appendChild(uprightText(cellShortX - 1, boxTop - 4, cellLabel, { size: 10 }, cr));
+      let resLabel = '';
+      if (node.showR && node.intResistance != null) resLabel = 'r = ' + node.intResistance + ' ' + (node.intResistancePrefix || '') + 'Ω';
+      else if (node.showR) resLabel = 'r';
+      else if (node.intResistance != null) resLabel = node.intResistance + ' ' + (node.intResistancePrefix || '') + 'Ω';
+      if (resLabel) g.appendChild(uprightText((resStartX + resEndX) / 2, boxTop - 4, resLabel, { size: 10 }, cr));
       break;
     }
 
@@ -1919,7 +1973,7 @@ update();
 //
 // ───── Simulation: Modified Nodal Analysis ───────────────────────────────
 //
-const POWER_KINDS = new Set(['cell', 'battery', 'varcell', 'varbattery', 'psdc', 'psac', 'solar']);
+const POWER_KINDS = new Set(['cell', 'battery', 'varcell', 'varbattery', 'psdc', 'psac', 'solar', 'cir-emf']);
 const WIRE_LIKE  = new Set(['wire', 'earth', 'terminal', 'fuse']);
 
 function simResistance(n) {
@@ -1939,6 +1993,7 @@ function simResistance(n) {
       return n._diodeOff ? 1e9 : 1e-6;
     }
     case 'heater':     return n.value != null ? n.value * prefixMultiplier(n.valuePrefix) : 20;
+    case 'cir-res':    return n.intResistance != null ? n.intResistance * prefixMultiplier(n.intResistancePrefix) : 0.5;
     case 'motor': case 'generator': case 'buzzer': case 'speaker': case 'microphone':
                        return n.value != null ? n.value * prefixMultiplier(n.valuePrefix) : 50;
     default:           return 1e-6;
@@ -1956,6 +2011,10 @@ function simVoltage(n) {
   if (n.kind === 'solar') {
     const cells = n.cells || 1;
     return (v != null ? v : 0.5 * cells) * (n.reversed ? -1 : 1);
+  }
+  if (n.kind === 'cir-emf') {
+    const e = n.emf != null ? n.emf * prefixMultiplier(n.emfPrefix) : 1.5;
+    return n.reversed ? -e : e;
   }
   return 0;
 }
@@ -1981,6 +2040,13 @@ function buildElectricalGraph(ast) {
   function process(node, a, b) {
     if (!node) return;
     if (node.type === 'component') {
+      if (node.kind === 'cir') {
+        // Cell with internal resistance — two electrical branches sharing one internal node
+        const internal = newNode();
+        branches.push({ node, kind: 'cir-emf', from: a, to: internal });
+        branches.push({ node, kind: 'cir-res', from: internal, to: b });
+        return;
+      }
       branches.push({ node, kind: node.kind, from: a, to: b });
       return;
     }
@@ -2112,6 +2178,7 @@ function componentDisplayName(n, idx) {
   const KIND_NAME = {
     cell: 'cell', battery: 'battery', varcell: 'var. cell', varbattery: 'var. battery',
     solar: 'solar cell',
+    cir: 'cell w/ internal r',
     psdc: 'DC supply', psac: 'AC supply',
     resistor: 'resistor', varresistor: 'var. resistor', pot: 'potentiometer',
     bulb: 'bulb', thermistor: 'thermistor', ldr: 'LDR', fuse: 'fuse',
@@ -2524,12 +2591,30 @@ document.getElementById('calc-btn').addEventListener('click', () => {
     applyChevronAutoDir(ast);
     const graph = buildElectricalGraph(ast);
     const result = solveCircuit(graph);
-    _simResults.clear();
+    // Combine cir-emf + cir-res into one entry per cir component
+    const combined = [];
+    const cirSeen = new Map();
     for (const br of result.branchData) {
-      if (!br.implicit) _simResults.set(br.node, { V: br.V, I: br.I });
+      if (br.implicit) continue;
+      if (br.kind === 'cir-emf' || br.kind === 'cir-res') {
+        let agg = cirSeen.get(br.node);
+        if (!agg) {
+          agg = { node: br.node, kind: 'cir', V: 0, I: 0, implicit: false };
+          cirSeen.set(br.node, agg);
+          combined.push(agg);
+        }
+        agg.V += br.V;
+        agg.I = br.I;
+      } else {
+        combined.push(br);
+      }
+    }
+    _simResults.clear();
+    for (const br of combined) {
+      _simResults.set(br.node, { V: br.V, I: br.I });
     }
     update();   // re-render with V/I labels attached
-    renderResults(result);
+    renderResults({ branchData: combined });
     status.textContent = 'Solved · ' + result.branchData.filter(b => !b.implicit).length + ' components';
   } catch (e) {
     status.textContent = 'Error: ' + e.message;
